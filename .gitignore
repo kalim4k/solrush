@@ -1,0 +1,12 @@
+node_modules/
+.env
+*.log
+
+# The original WallRush source this project was derived from. Kept on disk as
+# reference, never published: these files still carry the original author's
+# Applixir API key, HilltopAds publisher tags, Cloudflare Analytics token and
+# Supabase project details. Committing them to a public repo would republish
+# somebody else's credentials, indexed and permanent.
+app js
+index
+style

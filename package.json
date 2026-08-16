@@ -1,0 +1,28 @@
+{
+  "name": "solrush",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Quoridor-style 1v1 strategy game — AI opponent and realtime online play.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test",
+    "smoke": "node scripts/ws-smoke.mjs",
+    "smoke:db": "node scripts/db-smoke.mjs",
+    "smoke:warm": "node scripts/warm-reload-check.mjs",
+    "smoke:lang": "node scripts/lang-check.mjs",
+    "smoke:voice": "node scripts/voice-check.mjs",
+    "db:push": "node server/migrate.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.3"
+  }
+}
