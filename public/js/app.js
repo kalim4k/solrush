@@ -505,6 +505,7 @@ function handleWsMessage(msg) {
             flushPendingJoin();   // arrived through an invite link
             flushPendingQuick();  // arrived from a notification
             flushPortalRoom();    // leading a group in from the portal
+            flushIntent();        // tapped Quick match before the socket was up
             break;
         case 'lobby':
             $('online-count').textContent = msg.online;
@@ -629,8 +630,43 @@ function renderRooms(rooms) {
     }
 }
 
+/* An action that needs the socket to be up.
+
+   wsSend() drops the message when the socket is not open yet, silently and by
+   design — it is the right behaviour for a move during a blip. It is the wrong
+   behaviour for the three buttons that START online play, because every one of
+   them is reachable within a second of the page appearing: on a slow connection
+   the tap lands before the socket does, the message evaporates, and the player
+   waits on a screen that will never resolve. Nothing retries, because nothing
+   knows anything was lost.
+
+   This never showed up in local testing — the socket is open before a hand can
+   reach the screen — and it is exactly what happened on the first real
+   deployment, where the round trip is no longer zero.
+
+   Only the LAST intent is kept: tapping Quick match and then Play a friend
+   should do the second thing, not both. */
+let pendingIntent = null;
+
+function whenConnected(fn) {
+    if (ws && ws.readyState === WebSocket.OPEN) { fn(); return; }
+    pendingIntent = fn;
+}
+
+function flushIntent() {
+    const fn = pendingIntent;
+    pendingIntent = null;
+    if (fn) fn();
+}
+
 $('btn-online').addEventListener('click', () => show('screen-rooms'));
-$('btn-quick').addEventListener('click', () => { wsSend({ t: 'quick' }); show('screen-waiting'); $('waiting-code').hidden = true; });
+$('btn-quick').addEventListener('click', () => {
+    // The waiting screen goes up straight away either way: "looking for an
+    // opponent" is honest while the socket is still coming up.
+    whenConnected(() => wsSend({ t: 'quick' }));
+    show('screen-waiting');
+    $('waiting-code').hidden = true;
+});
 $('btn-friend').addEventListener('click', () => show('screen-friend'));
 
 /* ---- create-room settings dialog: mode / walls / time ---- */
@@ -669,14 +705,15 @@ $('cr-time').addEventListener('click', (e) => {
 });
 $('cr-create').addEventListener('click', () => {
     $('overlay-create').hidden = true;
-    wsSend({
-        t: 'create_room', private: createCfg.private,
-        mode: createCfg.mode, walls: Number(createCfg.walls), time: createCfg.time,
-    });
+    const cfg = { ...createCfg };
+    whenConnected(() => wsSend({
+        t: 'create_room', private: cfg.private,
+        mode: cfg.mode, walls: Number(cfg.walls), time: cfg.time,
+    }));
 });
 $('btn-friend-join').addEventListener('click', () => {
     const code = $('friend-code-input').value.trim().toUpperCase();
-    if (code.length >= 4) wsSend({ t: 'join_code', code });
+    if (code.length >= 4) whenConnected(() => wsSend({ t: 'join_code', code }));
 });
 
 /* ================= invite a friend by link ================= */
