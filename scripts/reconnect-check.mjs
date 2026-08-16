@@ -178,6 +178,18 @@ try {
     catch { paired = false; }
   }
   step(paired, 'quick match still pairs a player whose connection blinked');
+  if (!paired) {
+    // "Timed out" says nothing about why. Print what each side actually thinks
+    // is happening, so the next run does not have to be a guess.
+    for (const p of [C, D]) {
+      console.log(`  ..    ${p.name}: ` + await p.ev(`JSON.stringify({
+        screen: [...document.querySelectorAll('.screen')].filter(s => getComputedStyle(s).display !== 'none').map(s => s.id),
+        online: document.getElementById('online-count').textContent,
+        socket: (() => { try { return document.getElementById('offline-bar').hidden ? 'browser says online' : 'browser says offline'; } catch { return '?'; } })(),
+        waitingText: (document.getElementById('screen-waiting') || {}).innerText?.replace(/\\s+/g,' ').slice(0,90) || '',
+      })`));
+    }
+  }
 
   for (const p of pages) p.send('Network.emulateNetworkConditions', ONLINE);
 } catch (e) {

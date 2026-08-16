@@ -4,7 +4,7 @@
 // Bump CACHE whenever the shell changes. The old cache is deleted on activate,
 // so a stale engine.js can never be paired with a fresh app.js — which is the
 // failure mode that produces bug reports nobody can reproduce.
-const CACHE = 'solrush-v8';
+const CACHE = 'solrush-v9';
 
 const SHELL = [
   '/',

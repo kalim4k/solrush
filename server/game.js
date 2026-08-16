@@ -587,7 +587,20 @@ export class Hub {
 
      Now the seat is held, marked away, and reapClients() collects it after
      GRACE_MS if nobody comes back. */
-  detach(client) {
+  detach(client, ws = null) {
+    /* Ignore a socket that has already been replaced.
+
+       Over a real network the server often learns a socket is dead LONG after
+       the player reconnected on a new one — the close only surfaces when a ping
+       goes unanswered, up to half a minute later. By then the client has been
+       resumed by token and is live again, and this stale close would mark the
+       live session away: matchmaking then skips a player who is sitting right
+       there watching a spinner, until the grace period finally collects them.
+
+       On localhost the close lands instantly, in the right order, every time.
+       This only appears once there is latency between the two events. */
+    if (ws && client.ws !== ws) return;
+
     client.awaySince = Date.now();
     this.lobbySubs.delete(client);
     // Deliberately still queued: matchmake() skips absent players, so the place

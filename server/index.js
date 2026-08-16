@@ -562,8 +562,11 @@ wss.on('connection', (ws) => {
     }
   });
 
-  ws.on('close', () => { if (client) hub.detach(client); });
-  ws.on('error', () => { if (client) hub.detach(client); });
+  // Passing ws lets detach() ignore a socket the player has already replaced.
+  // See the comment there: without it, a late close event unseats a live
+  // session and the player waits forever on a match that will never be made.
+  ws.on('close', () => { if (client) hub.detach(client, ws); });
+  ws.on('error', () => { if (client) hub.detach(client, ws); });
 });
 
 // Drop sockets that stopped answering. A phone that loses signal leaves a

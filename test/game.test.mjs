@@ -381,6 +381,32 @@ test('a player who drops while queued is still matched when they return', () => 
   hub.stop();
 });
 
+test('a stale socket closing does not unseat a player who already reconnected', () => {
+  /* The production-only half of the bug. The server learns a socket is dead
+     when a ping goes unanswered, which can be half a minute after the player
+     already reconnected on a new one. That late close used to mark the live
+     session away, and matchmaking then skipped somebody sitting right there
+     watching a spinner. Locally the close always arrives first, so the ordering
+     that breaks it never occurs. */
+  const hub = new Hub();
+  const a = fakeClient('Alice');
+  const oldWs = { tag: 'old' };
+  a.ws = oldWs;
+  hub.attach(a);
+  hub.quick(a);
+
+  a.ws = { tag: 'new' };       // what the hello handler does on a resume
+  hub.attach(a);
+
+  hub.detach(a, oldWs);        // the dead socket's close finally arrives
+  assert.equal(a.awaySince, 0, 'the live session must not be marked away');
+  assert.ok(hub.quickQueue.includes(a), 'and it must keep its place in the queue');
+
+  hub.detach(a, a.ws);         // the real socket closing still counts
+  assert.ok(a.awaySince > 0);
+  hub.stop();
+});
+
 test('an absent player is not counted as online', () => {
   const hub = new Hub();
   const a = fakeClient('Alice');
