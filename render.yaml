@@ -1,0 +1,72 @@
+# Render blueprint. Connect this repository at https://render.com and it picks
+# this file up on its own.
+#
+# Why Render and not Vercel: this is one long-running Node process, not a set of
+# serverless functions. It holds WebSocket connections open, keeps the live
+# rooms in memory, and runs a heartbeat every 30 seconds. Vercel has nowhere for
+# that to live — the socket upgrade never completes, and even if it did, two
+# players would land in two different instances and the room one of them created
+# would not exist for the other. That is the "no room with that code" report.
+#
+# One service serves the game, the REST API and the socket on the same origin,
+# which is what the server was written for: no CORS, one certificate, one URL.
+
+services:
+  - type: web
+    name: solrush
+    runtime: node
+    region: frankfurt        # closest of Render's regions to French/African traffic
+    plan: free               # see the note about sleeping below
+
+    # --omit=dev skips sharp, which is only used by scripts/make-icons.mjs and
+    # compiles native code — minutes of build time for something the server
+    # never imports.
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+
+    # Render restarts the service if this stops answering. '/' returns the game
+    # itself, so it also proves the static files are being served.
+    healthCheckPath: /
+
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+
+      # Set in the Render dashboard — never in this file, which is public.
+      # Use the POOLED Neon host (the one ending in -pooler).
+      - key: DATABASE_URL
+        sync: false
+
+      # Generated once by Render and kept. Changing it later logs everyone out.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # The public URL of this service, e.g. https://solrush.onrender.com
+      # Password-reset links are built from it, so a wrong value sends players
+      # somewhere else. Fill it in after the first deploy tells you the URL.
+      - key: PUBLIC_ORIGIN
+        sync: false
+
+      # Optional: password-reset email. Left unset, the reset endpoint returns
+      # the link in its response instead of sending mail.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+
+      # Optional: TURN relay for voice in friend rooms. Without it, voice still
+      # works for most pairs and fails cleanly for the rest.
+      - key: TURN_URL
+        sync: false
+      - key: TURN_USER
+        sync: false
+      - key: TURN_PASS
+        sync: false
+
+# PORT is injected by Render and read by server/index.js. Do not set it here.
+#
+# The free plan sleeps after 15 minutes with no traffic and takes about
+# 50 seconds to wake. That is fine for checking the deploy works, and wrong for
+# real players: somebody waiting for an opponent gives up long before the server
+# answers. Switch this service to the Starter plan before you tell anyone about
+# the game.
