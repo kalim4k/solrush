@@ -384,7 +384,13 @@ export class Hub {
 
   stop() { clearInterval(this.ticker); }
 
-  get online() { return this.clients.size; }
+  // Seats held for a player who dropped are still in the map; they are not
+  // people looking at the game, so they do not belong in the counter.
+  get online() {
+    let n = 0;
+    for (const c of this.clients.values()) if (!c.awaySince) n++;
+    return n;
+  }
 
   tick() {
     const now = Date.now();
@@ -392,7 +398,26 @@ export class Hub {
     // Windows widen with time, so a queue that could not pair a second ago may
     // pair now. Without this, two lone players sit waiting forever.
     if (this.quickQueue.length > 1) this.matchmake();
+    this.reapClients(now);
     this.reapRooms(now);
+  }
+
+  /* Give up a seat that nobody came back for.
+
+     detach() no longer throws a player away the instant their socket closes —
+     see the comment there — so something has to, eventually, or an abandoned
+     room is never reaped and the queue fills with ghosts. GRACE_MS is the same
+     window a disconnected player already gets mid-game. */
+  reapClients(now) {
+    for (const [token, c] of this.clients) {
+      if (!c.awaySince || now - c.awaySince <= GRACE_MS) continue;
+      this.clients.delete(token);
+      this.dequeue(c);
+      this.lobbySubs.delete(c);
+      // A live game hands the win to the opponent through its own timer; this
+      // only clears out rooms that never started.
+      if (c.room && !c.room.live) this.leaveRoom(c);
+    }
   }
 
   // A room with nobody left in it, or an abandoned finished one, is dropped.
@@ -414,6 +439,9 @@ export class Hub {
     const rooms = [];
     for (const room of this.rooms.values()) {
       if (room.private || room.full || room.state) continue;
+      // Its host is holding a seat but is not there. Listing it invites
+      // somebody into a game against an empty chair.
+      if (room.players[0]?.awaySince) continue;
       const v = room.lobbyView();
       if (v) rooms.push(v);
     }
@@ -492,16 +520,20 @@ export class Hub {
 
   matchmake() {
     const now = Date.now();
-    // Drop anyone whose socket died while queued, then pair from the front.
+    // Drop anyone whose seat has been collected, then pair from the front.
+    // Someone merely away keeps their place — reapClients() removes them if
+    // they never come back — but must not be matched while absent, or their
+    // opponent starts a game alone.
     this.quickQueue = this.quickQueue.filter(c => this.clients.has(c.token) && !c.room);
+    const ready = (c) => !c.awaySince;
 
     for (let i = 0; i < this.quickQueue.length; i++) {
       const a = this.quickQueue[i];
-      if (a.room) continue;
+      if (a.room || !ready(a)) continue;
       let bestJ = -1, bestGap = Infinity;
       for (let j = i + 1; j < this.quickQueue.length; j++) {
         const b = this.quickQueue[j];
-        if (b.room) continue;
+        if (b.room || !ready(b)) continue;
         const gap = Math.abs(a.points - b.points);
         // The longer-waiting of the two sets the window: one player's patience
         // is enough to justify the match.
@@ -533,19 +565,35 @@ export class Hub {
   /* ---- connections ---- */
 
   attach(client) {
+    client.awaySince = 0;          // back, whether this is a first hello or a return
     this.clients.set(client.token, client);
     this.pushLobby();
   }
 
+  /* A closed socket is not a player leaving.
+
+     This used to delete the client from the map and, for any room that had not
+     started yet, remove them from it — which meant a room died the moment its
+     host's connection blinked. On a laptop with two windows on localhost that
+     never happens. On a phone it happens every time the screen locks or the
+     player switches app, so the sequence "make a room, send the code to a
+     friend, wait" destroyed the room before the friend could type it. The
+     symptoms were a code that did not work, a room missing from the lobby, and
+     Quick match spinning on two devices at once.
+
+     Deleting from the map broke the other half too: the hello handler resumes a
+     session by looking the token up, so a player who reconnected mid-game was
+     handed a brand-new seat and lost the game they were in.
+
+     Now the seat is held, marked away, and reapClients() collects it after
+     GRACE_MS if nobody comes back. */
   detach(client) {
-    this.clients.delete(client.token);
-    this.dequeue(client);
+    client.awaySince = Date.now();
     this.lobbySubs.delete(client);
-    // The seat is NOT freed here. A dropped connection holds its place for
-    // GRACE_MS so a reconnect lands back in the same game; leaveRoom() would
-    // hand the opponent a win for a lost signal.
+    // Deliberately still queued: matchmake() skips absent players, so the place
+    // is kept for a few seconds rather than lost. Nothing on the client
+    // re-sends `quick`, so losing it here strands them on the waiting screen.
     if (client.room?.live) client.room.markAway(client);
-    else if (client.room) this.leaveRoom(client);
     this.pushLobby();
   }
 }

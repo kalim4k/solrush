@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Hub } from '../server/game.js';
+import { Hub, GRACE_MS } from '../server/game.js';
 import { pawnMoves } from '../public/js/engine.js';
 
 let seq = 0;
@@ -286,6 +286,130 @@ test('a dropped connection freezes the clock instead of losing the game', () => 
   assert.equal(room.over, false, 'the game is still alive');
   assert.ok(room.clocks.paused, 'and the clock has stopped');
   assert.ok(b.last('opp_disconnected'));
+  hub.stop();
+});
+
+/* ---- surviving a dropped connection ----
+
+   None of this shows up on a laptop with two windows open on localhost, where
+   nothing ever disconnects. In the field it happens constantly: a phone locks
+   its screen, the player switches app, wifi hands over to mobile data. Every
+   one of those closes the WebSocket. */
+
+test('a room waiting for an opponent survives the host dropping', () => {
+  // The whole point of a room code is that you send it to somebody and then
+  // wait. If the wait itself destroys the room, the feature cannot work.
+  const hub = new Hub();
+  const a = fakeClient('Alice');
+  hub.attach(a);
+  const room = hub.createRoom(a, { mode: 'duel', time: '5', private: true });
+  const code = room.code;
+
+  hub.detach(a);              // screen locked, app switched, signal lost
+  hub.tick();                 // the reaper runs four times a second
+
+  assert.ok(hub.rooms.has(code), 'the room should still exist');
+  assert.equal(room.players[0], a, 'and the host should still hold seat 0');
+  hub.stop();
+});
+
+test('a friend can still join by code after the host dropped', () => {
+  const hub = new Hub();
+  const a = fakeClient('Alice');
+  const b = fakeClient('Bob');
+  hub.attach(a); hub.attach(b);
+  const room = hub.createRoom(a, { mode: 'duel', time: '5', private: true });
+  hub.detach(a);
+  hub.tick();
+
+  hub.joinRoom(b, room.code);
+  assert.equal(b.room, room, 'the code must still work');
+  assert.ok(b.last('game_start'), 'and the game should start');
+  hub.stop();
+});
+
+test('reconnecting with the same token returns you to your seat', () => {
+  // This is what the hello handler does: look the token up and take the seat
+  // back. If the token is gone from the map, a returning player is a stranger
+  // and their game is lost — which is what happened.
+  const { hub, a, room } = pair();
+  hub.detach(a);
+  const seat = hub.clients.get(a.token);
+  assert.ok(seat, 'the token must still resolve after a drop');
+  assert.equal(seat.room, room, 'and it must still point at the game');
+  assert.equal(seat.side, 0);
+  hub.stop();
+});
+
+test('a seat is given up once the grace period really has passed', () => {
+  // Holding it forever is its own bug: an abandoned room would never be reaped.
+  const hub = new Hub();
+  const a = fakeClient('Alice');
+  hub.attach(a);
+  const room = hub.createRoom(a, { mode: 'duel', time: '5', private: true });
+  hub.detach(a);
+
+  const later = Date.now() + GRACE_MS + 1000;
+  hub.reapClients(later);
+  hub.reapRooms(later);
+  assert.equal(hub.clients.has(a.token), false, 'the client is finally dropped');
+  assert.equal(hub.rooms.has(room.code), false, 'and the room with it');
+  hub.stop();
+});
+
+test('a player who drops while queued is still matched when they return', () => {
+  /* The reported symptom: two devices, both on Quick match, both spinning
+     forever. The first one queued, its socket dropped when the screen went
+     off, and it was removed from the queue — but nothing on the client
+     re-sends `quick`, so it waited on a queue it was no longer in. */
+  const hub = new Hub();
+  const a = fakeClient('Alice');
+  const b = fakeClient('Bob');
+  hub.attach(a); hub.attach(b);
+
+  hub.quick(a);
+  hub.detach(a);                     // screen off while waiting
+  assert.equal(hub.quickQueue.includes(a), true, 'the place in the queue is held');
+
+  hub.quick(b);
+  assert.equal(a.room, null, 'but an absent player is not matched');
+
+  hub.attach(a);                     // back
+  hub.matchmake();
+  assert.ok(a.room && b.room, 'and now they pair');
+  assert.equal(a.room, b.room);
+  hub.stop();
+});
+
+test('an absent player is not counted as online', () => {
+  const hub = new Hub();
+  const a = fakeClient('Alice');
+  hub.attach(a);
+  assert.equal(hub.online, 1);
+  hub.detach(a);
+  assert.equal(hub.online, 0, 'holding the seat must not inflate the counter');
+  hub.attach(a);
+  assert.equal(hub.online, 1);
+  hub.stop();
+});
+
+test('a public room is hidden from the lobby while its host is away', () => {
+  // Otherwise somebody joins and starts a game against an empty chair.
+  const hub = new Hub();
+  const a = fakeClient('Alice');
+  const watcher = fakeClient('Watcher');
+  hub.attach(a); hub.attach(watcher);
+  hub.lobbySubs.add(watcher);
+  hub.createRoom(a, { mode: 'duel', time: '5', private: false });
+  assert.equal(watcher.last('lobby').rooms.length, 1);
+
+  hub.detach(a);
+  hub.pushLobby();
+  assert.equal(watcher.last('lobby').rooms.length, 0, 'hidden while the host is gone');
+
+  hub.attach(a);
+  hub.pushLobby();
+  assert.equal(watcher.last('lobby').rooms.length, 1, 'and back when they return');
   hub.stop();
 });
 

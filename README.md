@@ -80,6 +80,7 @@ npm run smoke:db -- 3000       # the whole stack, against the REAL database
 npm run smoke:warm             # a RETURNING browser, needs the server + Chrome
 npm run smoke:lang             # clicks through all six languages in a browser
 npm run smoke:voice            # two browsers, one friend room, a real WebRTC call
+npm run smoke:drop             # pulls the network out mid-session and checks it recovers
 ```
 
 `smoke` needs the server up but not the database: a guest can play a whole game
@@ -119,6 +120,22 @@ shows up on the other screen. It finishes with two more browsers on quick match
 and asserts they are never offered the button at all. It found two bugs the unit
 tests could not: strangers being offered voice (see below), and the two clients
 answering each other's "I joined" notice in an infinite loop.
+
+`smoke:drop` is the one that matched a real bug report. Every other check runs on
+a connection that never fails, and they all passed while the deployed game was
+close to unusable: a room you made and waited in would disappear, its code would
+stop working, and two devices on Quick match would spin forever.
+
+The cause was that a closed socket was treated as a player leaving. A room that
+had not started yet lost its host outright, and `clients.delete()` meant the
+hello handler could no longer resume a session by token — so reconnecting into a
+live game silently gave you a new seat and lost the old one. On a laptop with two
+windows on localhost a socket never closes. On a phone it closes every time the
+screen locks or the player switches app, which is precisely what somebody does
+after making a room: they go and send the code to a friend.
+
+The check drops the connection on purpose with the DevTools network emulator and
+checks the room, the code and the queue all survive it.
 
 Four of those tests are guards rather than unit tests, and are the ones worth
 knowing about:

@@ -16,6 +16,7 @@
     "smoke:warm": "node scripts/warm-reload-check.mjs",
     "smoke:lang": "node scripts/lang-check.mjs",
     "smoke:voice": "node scripts/voice-check.mjs",
+    "smoke:drop": "node scripts/reconnect-check.mjs",
     "db:push": "node server/migrate.js"
   },
   "dependencies": {
