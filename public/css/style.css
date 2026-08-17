@@ -1465,6 +1465,7 @@ html[data-theme="dark"] .legal-links span {
 }
 
 .cos-swatch {
+    position: relative;
     aspect-ratio: 1;
     border: 2px solid transparent;
     border-radius: 50%;
@@ -1490,11 +1491,31 @@ html[data-theme="dark"] .legal-links span {
     box-shadow: 0 0 0 3px rgba(47, 109, 246, .3), inset -3px -6px 9px rgba(0, 0, 0, .35);
 }
 
-/* Locked, not hidden. A player who cannot see what they would be buying has no
-   reason to buy it, so the paid skins stay on display and stay dimmed. */
+/* Locked, not hidden — and the first attempt got this exactly wrong.
+
+   opacity .35 with grayscale(.6) turned amber, ember, ice, violet and gold into
+   five identical pale discs. They were visible in the sense that something was
+   there, and useless in the only sense that matters: you could not tell what
+   you would be buying. A player does not pay for a shape.
+
+   So the colour stays legible and the padlock carries the state instead. Being
+   locked should read as "not yours yet", which is an invitation, rather than as
+   "broken", which is what a washed-out swatch looks like. */
 .cos-swatch.locked {
-    opacity: .35;
-    filter: grayscale(.6);
+    opacity: .82;
+}
+
+.cos-swatch.locked::after {
+    content: '🔒';
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    font-size: .72rem;
+    line-height: 1;
+    padding: 2px;
+    border-radius: 50%;
+    background: var(--card);
+    box-shadow: 0 1px 3px rgba(10, 20, 50, .3);
 }
 
 /* walls: glossy capsules in the owner's color (blue = player 0, red = player 1) */
