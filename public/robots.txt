@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# The API is live data, not pages. Crawling it costs the server work and returns
+# nothing anyone can index.
+Disallow: /api/
+
+Sitemap: https://solrush.onrender.com/sitemap.xml

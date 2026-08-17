@@ -288,7 +288,7 @@ export default {
     '• No carga nada: mira el aviso de sin conexión en la parte superior. Jugar contra la IA funciona sin conexión; jugar en línea no.',
     '',
     '## Sigues atascado',
-    'Escribe a contact@example.com contando qué hiciste y qué pasó en su lugar.',
+    'Escribe a contact@solrush.com contando qué hiciste y qué pasó en su lugar.',
   ].join('\n'),
 
   terms_title: 'Condiciones de uso',
@@ -321,7 +321,7 @@ export default {
     'Puedes dejarlo cuando quieras. Pídenos que borremos tu cuenta y lo haremos.',
     '',
     '## Contacto',
-    'contact@example.com',
+    'contact@solrush.com',
   ].join('\n'),
 
   privacy_title: 'Privacidad',
@@ -358,7 +358,7 @@ export default {
     'Los datos están en una base de datos Postgres alojada por Neon. Los datos de invitado se conservan mientras el dispositivo siga jugando. Los datos de cuenta se conservan hasta que pidas que se borren.',
     '',
     '## Tus derechos',
-    'Escribe a contact@example.com para ver qué se guarda sobre ti, corregirlo o pedir que se borre. Borrar una cuenta elimina su correo, su contraseña cifrada, sus puntos y su historial.',
+    'Escribe a contact@solrush.com para ver qué se guarda sobre ti, corregirlo o pedir que se borre. Borrar una cuenta elimina su correo, su contraseña cifrada, sus puntos y su historial.',
     '',
     '## Menores',
     'El juego es apto para todas las edades, pero una cuenta necesita una dirección de correo. Si tienes menos de 13 años, pídeselo a tu madre o a tu padre antes de crear una.',

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The game itself is one URL: help, the legal documents and everything else it
+     shows are drawn into that same page by JavaScript, so there is nothing else
+     to list from it. The two rules pages are separate because they are real
+     documents a crawler can read without running any script. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://solrush.onrender.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://solrush.onrender.com/rules/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://solrush.onrender.com/rules/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://solrush.onrender.com/regles/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://solrush.onrender.com/regles/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://solrush.onrender.com/rules/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://solrush.onrender.com/regles/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>

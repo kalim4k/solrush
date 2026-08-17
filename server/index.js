@@ -68,6 +68,13 @@ const MIME = {
   '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.webmanifest': 'application/manifest+json',
+  /* robots.txt, ads.txt and sitemap.xml. Without these two entries they fall to
+     application/octet-stream, and since every response also carries
+     X-Content-Type-Options: nosniff, the crawler is told in the same breath that
+     it may not guess — so it declines to read the file at all. An ads.txt that
+     serves but cannot be parsed is indistinguishable from a missing one. */
+  '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
 };
 
 async function serveStatic(req, res, urlPath, versioned = false) {

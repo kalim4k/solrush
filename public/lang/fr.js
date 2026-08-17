@@ -291,7 +291,7 @@ export default {
     "• Rien ne se charge — regarde le bandeau hors ligne en haut de l'écran. Le jeu contre l'IA fonctionne hors ligne ; le jeu en ligne, non.",
     '',
     '## Toujours bloqué',
-    "Écris à contact@example.com en décrivant ce que tu as fait et ce qui s'est produit à la place.",
+    "Écris à contact@solrush.com en décrivant ce que tu as fait et ce qui s'est produit à la place.",
   ].join('\n'),
 
   terms_title: "Conditions d'utilisation",
@@ -324,7 +324,7 @@ export default {
     "Tu peux arrêter à tout moment. Demande-nous de supprimer ton compte et nous le ferons.",
     '',
     '## Contact',
-    'contact@example.com',
+    'contact@solrush.com',
   ].join('\n'),
 
   privacy_title: 'Confidentialité',
@@ -361,7 +361,7 @@ export default {
     "Les données sont conservées dans une base Postgres hébergée par Neon. Les données d'invité sont gardées tant que l'appareil continue de jouer. Les données de compte sont gardées jusqu'à ce que tu en demandes la suppression.",
     '',
     '## Tes droits',
-    "Écris à contact@example.com pour savoir ce qui est conservé à ton sujet, le corriger, ou le faire supprimer. Supprimer un compte efface son e-mail, son mot de passe haché, ses points et son historique.",
+    "Écris à contact@solrush.com pour savoir ce qui est conservé à ton sujet, le corriger, ou le faire supprimer. Supprimer un compte efface son e-mail, son mot de passe haché, ses points et son historique.",
     '',
     '## Les enfants',
     "Le jeu convient à tous les âges, mais un compte nécessite une adresse e-mail. Si tu as moins de 13 ans, demande à un parent avant d'en créer un.",

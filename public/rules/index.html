@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#eef1f7">
+
+    <title>SolRush Rules — How to Play Quoridor Online</title>
+    <meta name="description"
+        content="The complete rules of SolRush: how pawns move, how to jump an opponent, how walls work, the one rule that stops you sealing someone off, and how the Duel and Race modes are won. Plus strategy for new players.">
+    <link rel="canonical" href="https://solrush.onrender.com/rules/">
+    <link rel="alternate" hreflang="en" href="https://solrush.onrender.com/rules/">
+    <link rel="alternate" hreflang="fr" href="https://solrush.onrender.com/regles/">
+    <link rel="alternate" hreflang="x-default" href="https://solrush.onrender.com/rules/">
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="SolRush">
+    <meta property="og:url" content="https://solrush.onrender.com/rules/">
+    <meta property="og:title" content="SolRush Rules — How to Play">
+    <meta property="og:description"
+        content="Move your pawn or place a wall. Reach the far side first. The complete rules, and the strategy that decides most games.">
+    <meta property="og:image" content="https://solrush.onrender.com/icons/og-card.png">
+
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+
+    <script async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
+        crossorigin="anonymous"></script>
+
+    <!-- Self-contained on purpose. The app stylesheet is built around the game's
+         own markup and carries the whole board with it; this page needs a
+         paragraph and a heading, and should keep rendering if that file moves.
+         The palette below is copied from style.css so the two still match. -->
+    <style>
+        :root {
+            --bg: #eef1f7;
+            --card: #ffffff;
+            --text: #1d2440;
+            --muted: #8b93af;
+            --violet: #2f6df6;
+            --bezel: #c9d2e2;
+            --shadow: 0 8px 24px rgba(50, 70, 130, .12);
+        }
+
+        :root:not([data-theme="light"]) {
+            color-scheme: light;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #12141f;
+                --card: #1b1f30;
+                --text: #e8eaf6;
+                --muted: #8b93b4;
+                --bezel: #2c3349;
+                --shadow: 0 10px 28px rgba(0, 0, 0, .5);
+                color-scheme: dark;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            padding: 0 20px env(safe-area-inset-bottom);
+        }
+
+        .wrap {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 28px 0 64px;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            padding-bottom: 22px;
+            border-bottom: 1px solid var(--bezel);
+        }
+
+        nav a {
+            color: var(--violet);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        h1 {
+            font-size: 2rem;
+            line-height: 1.2;
+            margin: 30px 0 10px;
+        }
+
+        h2 {
+            font-size: 1.3rem;
+            margin: 38px 0 10px;
+        }
+
+        h3 {
+            font-size: 1.05rem;
+            margin: 24px 0 6px;
+        }
+
+        .lede {
+            font-size: 1.1rem;
+            color: var(--muted);
+            margin-top: 0;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--bezel);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 18px 22px;
+            margin: 26px 0;
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        ul,
+        ol {
+            padding-left: 22px;
+        }
+
+        li {
+            margin: 7px 0;
+        }
+
+        dt {
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        dd {
+            margin: 4px 0 0;
+            color: var(--muted);
+        }
+
+        .play {
+            display: inline-block;
+            background: var(--violet);
+            color: #fff;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 13px 26px;
+            border-radius: 999px;
+            margin-top: 8px;
+        }
+
+        footer {
+            margin-top: 48px;
+            padding-top: 20px;
+            border-top: 1px solid var(--bezel);
+            color: var(--muted);
+            font-size: .92rem;
+        }
+
+        footer a {
+            color: var(--violet);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <nav>
+            <a href="/">← Play SolRush</a>
+            <span class="spacer"></span>
+            <a href="/regles/" hreflang="fr">Français</a>
+        </nav>
+
+        <h1>SolRush rules</h1>
+        <p class="lede">Two players, one board, and a simple choice every turn: run, or build. Here is everything the
+            game asks you to know, and the handful of ideas that decide most matches.</p>
+
+        <p>SolRush is Quoridor played in the browser. You have a pawn on a 9×9 board and a supply of walls. Your pawn
+            starts on your own back row; your goal is the row on the opposite side. So does your opponent's, in the
+            other direction. Whoever crosses first wins, immediately.</p>
+
+        <div class="card">
+            <h2>Your turn, in one sentence</h2>
+            <p>On your turn you do <strong>exactly one</strong> of two things: move your pawn one square, or place one
+                wall. You may not do both, and you may not pass.</p>
+        </div>
+
+        <h2>Moving your pawn</h2>
+        <p>Your pawn moves one square up, down, left or right. Never diagonally, and never through a wall.</p>
+
+        <h3>Jumping over your opponent</h3>
+        <p>If your opponent is standing on the square you wanted, you do not lose the move — you jump straight over
+            them and land on the square immediately behind.</p>
+        <p>If that landing square is unavailable — a wall stands behind them, or they are on the edge of the board —
+            you may instead step diagonally around them, to either side. This is the one time a pawn moves
+            diagonally.</p>
+
+        <h2>Walls</h2>
+        <p>A wall is two squares long and is placed <em>between</em> rows or columns rather than on a square. Three
+            things follow from that, and they matter more than they sound:</p>
+        <ul>
+            <li><strong>A wall blocks both players equally.</strong> There are no walls of your own colour. Anything
+                you build is also in your way.</li>
+            <li><strong>A wall is permanent.</strong> Once placed it stays for the rest of the game. Nothing removes
+                it, including you.</li>
+            <li><strong>Your supply is limited.</strong> Spend your last wall and you can only move for the remainder
+                of the game, whatever happens next.</li>
+        </ul>
+        <p>Walls may not overlap, and they may not cross another wall at its centre.</p>
+
+        <div class="card">
+            <h2>The rule that decides most games</h2>
+            <p>You may never seal your opponent off completely. After every wall you place, <strong>both</strong>
+                players must still have some route to their goal row — however long you have just made it.</p>
+            <p>A wall that would trap someone is simply refused: nothing is placed, and nothing is spent. So you cannot
+                win by walling someone in. You can only make their journey longer than yours.</p>
+            <p>Once that lands, the whole game changes shape. It stops being about blocking and becomes a race where
+                you are allowed to lengthen the other lane.</p>
+        </div>
+
+        <h2>Winning</h2>
+        <p>SolRush has two modes, and they are won differently.</p>
+        <dl>
+            <dt>Duel — the classic</dt>
+            <dd>You start on opposite sides of a 9×9 board and race to reach the other's back row. Ten walls each.</dd>
+            <dt>Race</dt>
+            <dd>You both start at the bottom of a taller 9×13 board and run for the same top row. Fifteen walls each.
+                Because you travel together rather than past each other, walls interfere far more often.</dd>
+        </dl>
+        <p>In both, the first pawn to reach its goal row wins the moment it arrives.</p>
+
+        <h2>The clock</h2>
+        <p>Each player has a time bank for the whole game, and a separate limit of 30 seconds for any single move.
+            Running out of either one loses the game.</p>
+        <p>The 30-second rule applies even in rooms created with no time limit — otherwise a player who walks away from
+            their phone leaves the other waiting forever.</p>
+        <p>If your opponent loses their connection the clock stops, and they have a minute to come back before the
+            game is awarded to you. Locking your screen or switching apps mid-game does not forfeit the match.</p>
+
+        <h2>Strategy for new players</h2>
+        <p>The rules take two minutes. These take rather longer, and they are the difference between a beginner and
+            somebody who is difficult to beat.</p>
+        <ol>
+            <li><strong>Count the race before you build.</strong> The entire game is a comparison of two shortest
+                paths: yours and theirs. Before spending a wall, ask whether you are already ahead. If you are, walking
+                forward wins — and costs nothing.</li>
+            <li><strong>An early wall is usually a wasted wall.</strong> On move three your opponent has the whole
+                board to go around it. The same wall placed twenty moves later, when their route has narrowed, can cost
+                them five squares.</li>
+            <li><strong>Good walls lengthen; they do not block.</strong> You are not allowed to seal anyone off, so
+                stop looking for the wall that stops them. Look for the one that forces a detour and hands you the
+                tempo.</li>
+            <li><strong>Remember that your walls trap you too.</strong> A surprising number of losses come from a wall
+                the player built themselves and then had to walk around.</li>
+            <li><strong>Keep two walls for the end.</strong> A player with walls left has answers. A player with none
+                can only run, and their opponent knows exactly where they are going.</li>
+            <li><strong>Use the jump.</strong> Jumping over an opponent who has stepped in front of you gains a square
+                you would otherwise have spent a whole turn recovering. In a close race that single square is the
+                game.</li>
+        </ol>
+
+        <h2>Common questions</h2>
+        <dl>
+            <dt>Do I need an account?</dt>
+            <dd>No. You can play against the AI, or online, without signing up. An account exists so your rating,
+                streak and history follow you between devices.</dd>
+            <dt>Is it free?</dt>
+            <dd>Yes, the whole game is free to play.</dd>
+            <dt>How do I play a specific friend?</dt>
+            <dd>Create a room and send them the code. They enter it and you are both in the same game, wherever they
+                are.</dd>
+            <dt>Does it work offline?</dt>
+            <dd>SolRush installs as an app and games against the AI work with no connection. Playing other people
+                needs one, naturally.</dd>
+            <dt>Is this the same as Quoridor?</dt>
+            <dd>Duel is Quoridor, played online. Race is a variant on a taller board where both players run in the
+                same direction.</dd>
+        </dl>
+
+        <p><a class="play" href="/">Play SolRush now</a></p>
+
+        <footer>
+            <p>SolRush — a free 1v1 strategy game in your browser.
+                <a href="/">Play</a> · <a href="/regles/">Règles en français</a>
+            </p>
+        </footer>
+    </div>
+</body>
+
+</html>

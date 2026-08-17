@@ -25,20 +25,24 @@
     <title>SolRush — Play Quoridor Online Free, 1v1 Strategy Game</title>
     <meta name="description"
         content="Play SolRush free in your browser — a 1v1 Quoridor strategy duel. Race your pawn to the far side of a 9×9 board, or wall your rival off. Against real people online, a friend by room code, or the AI. No download, no signup.">
-    <link rel="canonical" href="/">
+    <!-- Absolute, not "/". A relative canonical resolves against whatever URL the
+         page was fetched from, so a crawler arriving at a preview deploy or an
+         invite path canonicalises the page to itself and the duplicates compete.
+         AdSense and Search both want one settled address. -->
+    <link rel="canonical" href="https://solrush.onrender.com/">
 
     <!-- The card a messenger draws when the link is shared. Without these, a
        link pasted into Telegram or WhatsApp arrived as bare text. -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="SolRush">
-    <meta property="og:url" content="/">
+    <meta property="og:url" content="https://solrush.onrender.com/">
     <meta property="og:title" content="SolRush — Play Quoridor Online Free">
     <meta property="og:description"
         content="A 1v1 strategy duel in your browser. Race to the far side of the board, or wall your rival off. Against real players, a friend, or the AI — no signup.">
     <!-- A wide card, not the square icon. Messengers crop og:image to about
          1.91:1, so a square one loses the top and bottom of the board; this is
          the badge composed onto its own background at the right shape. -->
-    <meta property="og:image" content="/icons/og-card.png">
+    <meta property="og:image" content="https://solrush.onrender.com/icons/og-card.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="Two pawns on a board, separated by a wall.">
@@ -46,16 +50,16 @@
     <meta name="twitter:title" content="SolRush — Play Quoridor Online Free">
     <meta name="twitter:description"
         content="A 1v1 strategy duel in your browser. Race to the far side of the board, or wall your rival off. No signup.">
-    <meta name="twitter:image" content="/icons/og-card.png">
+    <meta name="twitter:image" content="https://solrush.onrender.com/icons/og-card.png">
 
     <!-- One page serves every language, so each alternate points back to it. -->
-    <link rel="alternate" hreflang="en" href="/">
-    <link rel="alternate" hreflang="ru" href="/">
-    <link rel="alternate" hreflang="fa" href="/">
-    <link rel="alternate" hreflang="tr" href="/">
-    <link rel="alternate" hreflang="fr" href="/">
-    <link rel="alternate" hreflang="es" href="/">
-    <link rel="alternate" hreflang="x-default" href="/">
+    <link rel="alternate" hreflang="en" href="https://solrush.onrender.com/">
+    <link rel="alternate" hreflang="ru" href="https://solrush.onrender.com/">
+    <link rel="alternate" hreflang="fa" href="https://solrush.onrender.com/">
+    <link rel="alternate" hreflang="tr" href="https://solrush.onrender.com/">
+    <link rel="alternate" hreflang="fr" href="https://solrush.onrender.com/">
+    <link rel="alternate" hreflang="es" href="https://solrush.onrender.com/">
+    <link rel="alternate" hreflang="x-default" href="https://solrush.onrender.com/">
 
     <!-- Structured data: what a search engine, and an assistant reading through
        one, uses to say what this thing actually is. -->
@@ -65,8 +69,8 @@
     "@type": "VideoGame",
     "name": "SolRush",
     "alternateName": "Sol Rush",
-    "url": "/",
-    "image": "/icons/icon-512.png",
+    "url": "https://solrush.onrender.com/",
+    "image": "https://solrush.onrender.com/icons/icon-512.png",
     "description": "A free 1v1 Quoridor-style strategy game played in the browser. Move your pawn to the opposite side of a 9×9 board before your opponent does, using a limited supply of walls to block their path. Play against real people online, against a friend by room code, or against an AI opponent.",
     "genre": ["Strategy", "Board Game", "Puzzle"],
     "gamePlatform": ["Web browser", "Android", "iOS"],
@@ -92,8 +96,23 @@
          no corner radius baked in. -->
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="manifest" href="manifest.json">
-    <!-- Opens the connection to the ad host early. Costs one handshake and no
-       download, and takes that handshake off the wait once Support is tapped. -->
+
+    <!-- Google AdSense (pub-8332061475038084).
+
+         The comment that used to sit here described a preconnect to the ORIGINAL
+         author's ad network, which the audit removed along with the network; the
+         tag below is ours.
+
+         Deliberately a plain static tag rather than an injected one: the AdSense
+         reviewer reads the raw HTML looking for it, and a script that only exists
+         after JavaScript runs is easy for it to miss. The cost of that choice is
+         real though — it also runs when the game is embedded in somebody else's
+         portal, which every portal forbids. Once the account is approved this
+         belongs behind the WR_EMBED check below. -->
+    <script async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
+        crossorigin="anonymous"></script>
+
     <link rel="stylesheet" href="css/style.css?v=126">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment

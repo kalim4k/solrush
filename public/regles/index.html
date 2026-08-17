@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#eef1f7">
+
+    <title>Règles de SolRush — Comment jouer au Quoridor en ligne</title>
+    <meta name="description"
+        content="Les règles complètes de SolRush : comment déplacer son pion, comment sauter par-dessus l'adversaire, comment poser un mur, la règle qui interdit d'enfermer quelqu'un, et comment on gagne en mode Duel et en mode Course. Avec la stratégie pour débuter.">
+    <link rel="canonical" href="https://solrush.onrender.com/regles/">
+    <link rel="alternate" hreflang="fr" href="https://solrush.onrender.com/regles/">
+    <link rel="alternate" hreflang="en" href="https://solrush.onrender.com/rules/">
+    <link rel="alternate" hreflang="x-default" href="https://solrush.onrender.com/rules/">
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="SolRush">
+    <meta property="og:url" content="https://solrush.onrender.com/regles/">
+    <meta property="og:title" content="Règles de SolRush — Comment jouer">
+    <meta property="og:description"
+        content="Avance ton pion ou pose un mur. Atteins l'autre bord le premier. Les règles complètes, et la stratégie qui décide la plupart des parties.">
+    <meta property="og:image" content="https://solrush.onrender.com/icons/og-card.png">
+
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+
+    <script async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
+        crossorigin="anonymous"></script>
+
+    <!-- Feuille de style volontairement autonome : celle du jeu est construite
+         autour du plateau et pèse son poids, alors que cette page n'a besoin que
+         d'un titre et de paragraphes. La palette est recopiée de style.css pour
+         que les deux se ressemblent. -->
+    <style>
+        :root {
+            --bg: #eef1f7;
+            --card: #ffffff;
+            --text: #1d2440;
+            --muted: #8b93af;
+            --violet: #2f6df6;
+            --bezel: #c9d2e2;
+            --shadow: 0 8px 24px rgba(50, 70, 130, .12);
+        }
+
+        :root:not([data-theme="light"]) {
+            color-scheme: light;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #12141f;
+                --card: #1b1f30;
+                --text: #e8eaf6;
+                --muted: #8b93b4;
+                --bezel: #2c3349;
+                --shadow: 0 10px 28px rgba(0, 0, 0, .5);
+                color-scheme: dark;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            padding: 0 20px env(safe-area-inset-bottom);
+        }
+
+        .wrap {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 28px 0 64px;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            padding-bottom: 22px;
+            border-bottom: 1px solid var(--bezel);
+        }
+
+        nav a {
+            color: var(--violet);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        h1 {
+            font-size: 2rem;
+            line-height: 1.2;
+            margin: 30px 0 10px;
+        }
+
+        h2 {
+            font-size: 1.3rem;
+            margin: 38px 0 10px;
+        }
+
+        h3 {
+            font-size: 1.05rem;
+            margin: 24px 0 6px;
+        }
+
+        .lede {
+            font-size: 1.1rem;
+            color: var(--muted);
+            margin-top: 0;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--bezel);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 18px 22px;
+            margin: 26px 0;
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        ul,
+        ol {
+            padding-left: 22px;
+        }
+
+        li {
+            margin: 7px 0;
+        }
+
+        dt {
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        dd {
+            margin: 4px 0 0;
+            color: var(--muted);
+        }
+
+        .play {
+            display: inline-block;
+            background: var(--violet);
+            color: #fff;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 13px 26px;
+            border-radius: 999px;
+            margin-top: 8px;
+        }
+
+        footer {
+            margin-top: 48px;
+            padding-top: 20px;
+            border-top: 1px solid var(--bezel);
+            color: var(--muted);
+            font-size: .92rem;
+        }
+
+        footer a {
+            color: var(--violet);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <nav>
+            <a href="/">← Jouer à SolRush</a>
+            <span class="spacer"></span>
+            <a href="/rules/" hreflang="en">English</a>
+        </nav>
+
+        <h1>Les règles de SolRush</h1>
+        <p class="lede">Deux joueurs, un plateau, et un choix très simple à chaque tour : courir, ou construire. Voici
+            tout ce que le jeu demande de savoir, et les quelques idées qui décident la plupart des parties.</p>
+
+        <p>SolRush, c'est le Quoridor joué dans le navigateur. Tu as un pion sur un plateau de 9×9 cases et une réserve
+            de murs. Ton pion démarre sur ta rangée de départ ; ton objectif est la rangée d'en face. Celui de ton
+            adversaire aussi, dans l'autre sens. Le premier qui traverse gagne, immédiatement.</p>
+
+        <div class="card">
+            <h2>Ton tour, en une phrase</h2>
+            <p>À ton tour, tu fais <strong>exactement une</strong> de ces deux choses : avancer ton pion d'une case, ou
+                poser un mur. Jamais les deux, et tu ne peux pas passer.</p>
+        </div>
+
+        <h2>Déplacer son pion</h2>
+        <p>Le pion avance d'une case vers le haut, le bas, la gauche ou la droite. Jamais en diagonale, et jamais à
+            travers un mur.</p>
+
+        <h3>Sauter par-dessus l'adversaire</h3>
+        <p>Si ton adversaire occupe la case où tu voulais aller, tu ne perds pas ton coup : tu sautes par-dessus lui et
+            tu atterris sur la case juste derrière.</p>
+        <p>Si cette case d'arrivée est indisponible — un mur se trouve derrière lui, ou il est au bord du plateau — tu
+            peux à la place le contourner en diagonale, d'un côté ou de l'autre. C'est le seul moment où un pion se
+            déplace en diagonale.</p>
+
+        <h2>Les murs</h2>
+        <p>Un mur occupe deux cases de long et se pose <em>entre</em> les rangées ou les colonnes, pas sur une case.
+            Trois conséquences en découlent, et elles comptent plus qu'il n'y paraît :</p>
+        <ul>
+            <li><strong>Un mur gêne les deux joueurs à égalité.</strong> Il n'existe pas de mur à ta couleur. Tout ce
+                que tu construis se met aussi en travers de ton chemin.</li>
+            <li><strong>Un mur est définitif.</strong> Une fois posé il reste jusqu'à la fin de la partie. Rien ne
+                l'enlève, toi compris.</li>
+            <li><strong>Ta réserve est limitée.</strong> Une fois ton dernier mur posé, tu ne pourras plus qu'avancer
+                jusqu'à la fin, quoi qu'il arrive ensuite.</li>
+        </ul>
+        <p>Les murs ne peuvent ni se chevaucher, ni croiser un autre mur en son centre.</p>
+
+        <div class="card">
+            <h2>La règle qui décide la plupart des parties</h2>
+            <p>Tu ne peux jamais enfermer complètement ton adversaire. Après chaque mur posé, <strong>les deux</strong>
+                joueurs doivent conserver un chemin vers leur rangée d'arrivée — aussi long que tu viens de le
+                rendre.</p>
+            <p>Un mur qui enfermerait quelqu'un est tout simplement refusé : rien n'est posé, et rien n'est dépensé.
+                Autrement dit, on ne gagne pas en emmurant l'adversaire. On gagne en rendant son trajet plus long que
+                le sien.</p>
+            <p>Une fois qu'on a compris ça, le jeu change de nature. Il cesse d'être une affaire de blocage et devient
+                une course où l'on a le droit d'allonger la voie d'en face.</p>
+        </div>
+
+        <h2>Comment on gagne</h2>
+        <p>SolRush a deux modes, et ils ne se gagnent pas de la même façon.</p>
+        <dl>
+            <dt>Duel — le classique</dt>
+            <dd>Vous partez de deux bords opposés d'un plateau 9×9 et vous courez vers la rangée de départ de l'autre.
+                Dix murs chacun.</dd>
+            <dt>Course</dt>
+            <dd>Vous partez tous les deux du bas d'un plateau plus haut, en 9×13, et vous visez la même rangée du
+                haut. Quinze murs chacun. Comme vous voyagez ensemble au lieu de vous croiser, les murs se gênent
+                beaucoup plus souvent.</dd>
+        </dl>
+        <p>Dans les deux cas, le premier pion arrivé sur sa rangée d'objectif gagne à l'instant où il y pose le
+            pied.</p>
+
+        <h2>Le temps</h2>
+        <p>Chaque joueur dispose d'un capital de temps pour toute la partie, et d'une limite séparée de 30 secondes
+            pour chaque coup. Épuiser l'un ou l'autre fait perdre la partie.</p>
+        <p>La règle des 30 secondes s'applique même dans les salons créés sans limite de temps — sinon un joueur qui
+            pose son téléphone laisserait l'autre attendre indéfiniment.</p>
+        <p>Si ton adversaire perd sa connexion, l'horloge s'arrête et il a une minute pour revenir avant que la partie
+            ne te soit attribuée. Verrouiller son écran ou changer d'application en pleine partie ne fait pas perdre.
+        </p>
+
+        <h2>La stratégie pour débuter</h2>
+        <p>Les règles s'apprennent en deux minutes. Ce qui suit prend nettement plus longtemps, et c'est la différence
+            entre un débutant et quelqu'un contre qui il est difficile de gagner.</p>
+        <ol>
+            <li><strong>Compte la course avant de construire.</strong> Toute la partie se résume à comparer deux plus
+                courts chemins : le tien et le sien. Avant de dépenser un mur, demande-toi si tu n'es pas déjà devant.
+                Si tu l'es, avancer suffit à gagner — et ça ne coûte rien.</li>
+            <li><strong>Un mur posé trop tôt est un mur gâché.</strong> Au troisième coup, ton adversaire a tout le
+                plateau pour le contourner. Le même mur posé vingt coups plus tard, quand son passage s'est resserré,
+                peut lui coûter cinq cases.</li>
+            <li><strong>Un bon mur allonge, il ne bloque pas.</strong> Tu n'as pas le droit d'enfermer, alors arrête de
+                chercher le mur qui arrête. Cherche celui qui impose un détour et qui te donne un tour d'avance.</li>
+            <li><strong>N'oublie pas que tes murs t'enferment aussi.</strong> Un nombre étonnant de défaites vient d'un
+                mur que le joueur a posé lui-même, puis qu'il a dû contourner.</li>
+            <li><strong>Garde deux murs pour la fin.</strong> Un joueur qui a encore des murs a des réponses. Celui qui
+                n'en a plus ne peut que courir, et son adversaire sait exactement où il va.</li>
+            <li><strong>Sers-toi du saut.</strong> Sauter par-dessus un adversaire qui s'est mis devant toi te fait
+                gagner une case que tu aurais autrement mis un tour entier à récupérer. Dans une course serrée, cette
+                case-là, c'est la partie.</li>
+        </ol>
+
+        <h2>Questions fréquentes</h2>
+        <dl>
+            <dt>Faut-il créer un compte ?</dt>
+            <dd>Non. Tu peux jouer contre l'IA ou en ligne sans t'inscrire. Le compte sert à ce que ton classement, ta
+                série et ton historique te suivent d'un appareil à l'autre.</dd>
+            <dt>Est-ce gratuit ?</dt>
+            <dd>Oui, tout le jeu est gratuit.</dd>
+            <dt>Comment jouer contre un ami précis ?</dt>
+            <dd>Crée un salon et envoie-lui le code. Il le saisit et vous êtes dans la même partie, où qu'il se
+                trouve.</dd>
+            <dt>Est-ce que ça marche hors connexion ?</dt>
+            <dd>SolRush s'installe comme une application et les parties contre l'IA fonctionnent sans connexion. Jouer
+                contre d'autres personnes en demande une, forcément.</dd>
+            <dt>Est-ce la même chose que le Quoridor ?</dt>
+            <dd>Le mode Duel, c'est le Quoridor en ligne. Le mode Course est une variante sur un plateau plus haut, où
+                les deux joueurs courent dans la même direction.</dd>
+        </dl>
+
+        <p><a class="play" href="/">Jouer à SolRush</a></p>
+
+        <footer>
+            <p>SolRush — un jeu de stratégie 1 contre 1, gratuit, dans ton navigateur.
+                <a href="/">Jouer</a> · <a href="/rules/">Rules in English</a>
+            </p>
+        </footer>
+    </div>
+</body>
+
+</html>

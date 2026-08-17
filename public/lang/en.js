@@ -290,7 +290,7 @@ export default {
     '• Nothing loads at all — check the offline notice at the top of the screen. Play against the AI works offline; online play does not.',
     '',
     '## Still stuck',
-    'Write to contact@example.com and describe what you did and what happened instead.',
+    'Write to contact@solrush.com and describe what you did and what happened instead.',
   ].join('\n'),
 
   terms_title: 'Terms of use',
@@ -323,7 +323,7 @@ export default {
     'You may stop at any time. Ask us to delete your account and we will.',
     '',
     '## Contact',
-    'contact@example.com',
+    'contact@solrush.com',
   ].join('\n'),
 
   privacy_title: 'Privacy',
@@ -360,7 +360,7 @@ export default {
     'Data is held in a Postgres database hosted by Neon. Guest data is kept while the device keeps playing. Account data is kept until you ask for it to be deleted.',
     '',
     '## Your rights',
-    'Write to contact@example.com to see what is held about you, to correct it, or to have it deleted. Deleting an account removes its email, its password hash, its points and its history.',
+    'Write to contact@solrush.com to see what is held about you, to correct it, or to have it deleted. Deleting an account removes its email, its password hash, its points and its history.',
     '',
     '## Children',
     'The game is suitable for all ages, but an account needs an email address. If you are under 13, ask a parent before creating one.',
