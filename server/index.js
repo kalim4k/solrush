@@ -25,7 +25,8 @@ import { Hub } from './game.js';
 // The catalogue lives with the client because that is where it is drawn, but
 // the server is what decides who may wear what — so both read the same file.
 import {
-  DEFAULT_SKIN, DEFAULT_BADGE, resolveSkin, resolveBadge, isPhoto,
+  DEFAULT_SKIN, DEFAULT_BADGE, DEFAULT_PACK,
+  resolveSkin, resolveBadge, resolvePack, isPhoto,
 } from '../public/js/cosmetics.js';
 import { getStreak, touchStreak, restoreStreak, mergeDeviceStreak } from './streak.js';
 import { checkNick, randomNick } from '../public/js/nick.js';
@@ -477,6 +478,7 @@ class Client {
     this.plus = false;
     this.skin = DEFAULT_SKIN;
     this.badge = DEFAULT_BADGE;
+    this.pack = DEFAULT_PACK;
     this.pixel = '';
     this.room = null;
     this.side = -1;
@@ -559,9 +561,11 @@ wss.on('connection', (ws) => {
         skin: msg.skin || stored?.skin || DEFAULT_SKIN,
         badge: msg.badge || stored?.badge || DEFAULT_BADGE,
         pixel: msg.pixel || stored?.pixel || '',
+        pack: msg.pack || stored?.pack || DEFAULT_PACK,
       };
       client.skin = resolveSkin(wants.skin, client.plus);
       client.badge = resolveBadge(wants.badge, client.plus);
+      client.pack = resolvePack(wants.pack, client.plus);
       client.pixel = (client.skin === 'photo' && isPhoto(wants.pixel)) ? wants.pixel : '';
       if (client.skin === 'photo' && !client.pixel) client.skin = DEFAULT_SKIN;
 
@@ -570,8 +574,8 @@ wss.on('connection', (ws) => {
          a failed write costs the player nothing this session, and blocking the
          hello on it would delay the whole game for a cosmetic. */
       if (client.userId) {
-        q('UPDATE users SET skin = $2, badge = $3, pixel = $4 WHERE id = $1',
-          [client.userId, client.skin, client.badge, client.pixel || null])
+        q('UPDATE users SET skin = $2, badge = $3, pixel = $4, pack = $5 WHERE id = $1',
+          [client.userId, client.skin, client.badge, client.pixel || null, client.pack])
           .catch((e) => console.error('cosmetics not saved:', e.message));
       }
 
@@ -615,6 +619,7 @@ wss.on('connection', (ws) => {
           skin: client.skin,
           badge: client.badge,
           pixel: client.pixel || '',
+          pack: client.pack,
         } : {}),
         ...streak,
       });

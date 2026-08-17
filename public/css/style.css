@@ -1553,6 +1553,47 @@ html[data-theme="dark"] .legal-links span {
     }
 }
 
+/* The pack's flash as a wall lands. A separate element rather than a filter or
+   a box-shadow on the wall itself: those repaint the wall every frame and stutter
+   badly on the cheap Android phones this is played on, while an absolutely
+   positioned sibling animating only transform and opacity stays on the
+   compositor. --flash is set per wall by the code that builds it, so a wall
+   flashes in the colour of whoever placed it.
+
+   It runs once, for a fifth of a second, then it is gone: a wall goes down ten
+   times a game and anything longer becomes something to sit through. */
+.wall:not(.no-anim)::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+    background: var(--flash, transparent);
+    animation: wallFlash .28s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes wallFlash {
+    from {
+        transform: scale(1);
+        opacity: .85;
+    }
+
+    to {
+        transform: scale(1.7);
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    /* Someone who asked for less motion did not ask for a flashing board. The
+       sound still plays; the pack is not silenced, only stilled. */
+    .wall:not(.no-anim)::before {
+        animation: none;
+        opacity: 0;
+    }
+}
+
 .wall.no-anim {
     animation: none;
 }

@@ -35,6 +35,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS plus boolean NOT NULL DEFAULT false;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS skin  text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS badge text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS pixel text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pack  text;
 
 -- The leaderboard reads points DESC and nothing else; without this it is a
 -- full scan on every open of the tab.

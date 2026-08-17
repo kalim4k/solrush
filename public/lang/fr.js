@@ -134,6 +134,8 @@ export default {
   badges_title: 'Ton badge',
   pixel_pick: 'Utiliser ma photo',
   pixel_hint: 'Ta photo ne quitte pas cet appareil — elle est réduite ici et envoyée comme une petite image.',
+  packs_title: 'Pack sonore',
+  packs_hint: 'Ton pack se joue aussi chez ton adversaire, quand tu joues. Touche-en un pour l’entendre.',
   plus_locked: 'Réservé à SolRush Plus',
 
   /* ---- rangs ---- */

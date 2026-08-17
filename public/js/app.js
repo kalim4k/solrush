@@ -1,9 +1,10 @@
 // SolRush client app: screens, board UI, online play (WebSocket), AI mode, auth.
 import { initialState, applyMove, pawnMoves, canPlaceWall, goalRow, cloneState, N } from './engine.js';
 import {
-    SKINS, BADGES, DEFAULT_SKIN, DEFAULT_BADGE,
-    resolveSkin, resolveBadge, isPhoto, PHOTO_SIDE, PHOTO_MAX_CHARS,
+    SKINS, BADGES, PACKS, DEFAULT_SKIN, DEFAULT_BADGE, DEFAULT_PACK,
+    resolveSkin, resolveBadge, resolvePack, isPhoto, PHOTO_SIDE, PHOTO_MAX_CHARS,
 } from './cosmetics.js';
+import { playMove, PACK_TINT, PACK_BUZZ } from './packs.js';
 import { aiMove } from './ai.js';
 import { makeT, LANGS, LANG_CODES, RTL, loadLang } from './i18n.js';
 import { rankOf, nextRank } from './ranks.js';
@@ -71,38 +72,36 @@ let soundOn = localStorage.getItem('wr_sound') !== '0';
 // setting: silencing their page must silence us, whatever the profile says.
 let portalMute = false;
 
-// move sounds, like a chess clock (WebAudio, no files needed):
-// pawn = short high "tick", wall = lower wooden "knock"
+/* Move sounds, like a chess clock. Synthesised, never downloaded — see
+   packs.js, which holds the five voices.
+
+   Whose pack plays is the point of the feature: the mover's. Your drums sound
+   on your opponent's phone when you move, which is the only thing that makes a
+   sound pack worth paying for, and it keeps the board legible because each
+   player's moves keep a signature of their own. */
 let audioCtx = null;
 function tick(mine, wall = false) {
     if (!soundOn || portalMute) return;
     try {
         audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        const t0 = audioCtx.currentTime;
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        if (wall) {
-            o.type = 'sine';
-            o.frequency.setValueAtTime(mine ? 340 : 270, t0);
-            o.frequency.exponentialRampToValueAtTime(mine ? 180 : 140, t0 + 0.1); // falling thud
-            g.gain.setValueAtTime(0.0001, t0);
-            g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.006);
-            g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
-            o.connect(g).connect(audioCtx.destination);
-            o.start(t0);
-            o.stop(t0 + 0.15);
-        } else {
-            o.type = 'triangle';
-            o.frequency.value = mine ? 660 : 500; // my move rings higher than theirs
-            g.gain.setValueAtTime(0.0001, t0);
-            g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.008);
-            g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
-            o.connect(g).connect(audioCtx.destination);
-            o.start(t0);
-            o.stop(t0 + 0.1);
-        }
+        playMove(audioCtx, movingPack(mine), { wall, mine });
     } catch { /* no audio — fine */ }
+}
+
+// The pack belonging to whoever just moved. Falls back to the free one for the
+// AI, for a replay, and for an opponent on a build that predates all this.
+function movingPack(mine) {
+    if (mine) return resolvePack(myPack, myPlus);
+    return game?.oppPack || DEFAULT_PACK;
+}
+
+// The tint a wall flashes, by the seat that built it. `by` is a seat number,
+// not a side of the screen, so it has to be compared with my own seat rather
+// than assumed.
+function packTintFor(by) {
+    const mine = game && by === game.myIndex;
+    return PACK_TINT[movingPack(mine)] || PACK_TINT[DEFAULT_PACK];
 }
 
 // theme: light by default, dark if the user switched it in the profile
@@ -266,6 +265,7 @@ let myPlus = false;
 let mySkin = localStorage.getItem('wr_skin') || DEFAULT_SKIN;
 let myBadge = localStorage.getItem('wr_badge') || DEFAULT_BADGE;
 let myPixel = localStorage.getItem('wr_pixel') || '';
+let myPack = localStorage.getItem('wr_pack') || DEFAULT_PACK;
 
 /* Every hello carries the same thing, and there are three places that send one
    — first connect, after logging in, and after logging out. When cosmetics were
@@ -284,6 +284,7 @@ function helloMsg(jwt) {
            the account already owns rather than resetting it. */
         skin: localStorage.getItem('wr_skin') || '',
         badge: localStorage.getItem('wr_badge') || '',
+        pack: localStorage.getItem('wr_pack') || '',
         // Only with the skin that uses it: 2.4 KB has no business riding on
         // every reconnect otherwise.
         pixel: mySkin === 'photo' ? myPixel : '',
@@ -546,6 +547,7 @@ function handleWsMessage(msg) {
             if (msg.skin) { mySkin = msg.skin; localStorage.setItem('wr_skin', mySkin); }
             if (msg.badge) { myBadge = msg.badge; localStorage.setItem('wr_badge', myBadge); }
             if (msg.pixel) { myPixel = msg.pixel; localStorage.setItem('wr_pixel', myPixel); }
+            if (msg.pack) { myPack = msg.pack; localStorage.setItem('wr_pack', myPack); }
             renderCosmetics();
             updateProfileUI();
             myStreak = msg.streak || 0;
@@ -1106,6 +1108,12 @@ function renderGame() {
         if (idx < prevWallCount) el.classList.add('no-anim');
         const rect = wallRect(wallToView(w));
         el.style.cssText = `left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px`;
+        /* The pack is seen as well as heard: the wall lands in its owner's
+           colour. A custom property rather than a class, because the flash
+           belongs to the player who built it and there is one wall element per
+           wall — so this is the cheapest way to say "this one, that colour"
+           without a rule per pack per seat. */
+        el.style.setProperty('--flash', packTintFor(w.by));
         board.appendChild(el);
     });
     game._wallsRendered = s.walls.length;
@@ -1365,7 +1373,8 @@ board.addEventListener('click', (e) => { tapCell(e.target); }, false);
 
 function submitMove(move) {
     if (!isMyTurn()) return;
-    vibrate(move.type === 'wall' ? 25 : 15);
+    // The buzz belongs to the pack too — the drums thump, the ice barely ticks.
+    vibrate(PACK_BUZZ[resolvePack(myPack, myPlus)] ?? (move.type === 'wall' ? 25 : 15));
     tick(true, move.type === 'wall');
     if (game.mode === 'online') {
         wsSend({ t: 'move', move });
@@ -1476,6 +1485,7 @@ function startOnlineGame(msg) {
         oppSkin: msg.opp?.skin || DEFAULT_SKIN,
         oppBadge: msg.opp?.badge || DEFAULT_BADGE,
         oppPixel: msg.opp?.pixel || '',
+        oppPack: msg.opp?.pack || DEFAULT_PACK,
         ranked: msg.ranked !== false,
         clocks: { ...msg.clocks, recvAt: Date.now() },
         over: false,
@@ -1919,6 +1929,7 @@ const daysPhrase = (n, key = 'streak_days') =>
 function cosSave() {
     localStorage.setItem('wr_skin', mySkin);
     localStorage.setItem('wr_badge', myBadge);
+    localStorage.setItem('wr_pack', myPack);
     if (myPixel) localStorage.setItem('wr_pixel', myPixel);
     /* Re-introduce ourselves rather than inventing a "cosmetics changed"
        message. hello already carries the whole identity and the server already
@@ -1976,6 +1987,42 @@ function renderCosmetics() {
         });
         badgeBox.appendChild(el);
     }
+
+    const packBox = $('pack-grid');
+    if (!packBox) return;
+    packBox.textContent = '';
+    for (const p of PACKS) {
+        const locked = !p.free && !myPlus;
+        const el = cosSwatch(p.id, true, p.id === myPack, locked);
+        el.textContent = PACK_GLYPH[p.id] || '·';
+        el.addEventListener('click', () => {
+            if (locked) {
+                /* Play it anyway before refusing. Hearing the drums once is a
+                   far better argument for buying them than a padlock is, and
+                   there is nothing to protect: the sound is a few lines of
+                   code that already shipped to this browser. */
+                previewPack(p.id);
+                return toast(t('plus_locked'));
+            }
+            myPack = p.id;
+            cosSave();
+            previewPack(p.id);
+        });
+        packBox.appendChild(el);
+    }
+}
+
+const PACK_GLYPH = { wood: '🪵', neon: '🎛️', fire: '🔥', ice: '❄️', drum: '🥁' };
+
+// A move and then a wall, spaced the way they fall in a real game.
+function previewPack(id) {
+    if (!soundOn || portalMute) return;
+    try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        playMove(audioCtx, id, { wall: false, mine: true });
+        setTimeout(() => playMove(audioCtx, id, { wall: true, mine: true }), 220);
+    } catch { /* no audio — the picker still works */ }
 }
 
 /* A photo reduced to twelve colours on a twelve-square grid.

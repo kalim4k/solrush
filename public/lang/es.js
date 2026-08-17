@@ -132,6 +132,8 @@ export default {
   badges_title: 'Tu distintivo',
   pixel_pick: 'Usar mi foto',
   pixel_hint: 'Tu foto no sale de este dispositivo: se reduce aquí y se envía como una imagen pequeña.',
+  packs_title: 'Pack de sonido',
+  packs_hint: 'Tu pack suena también en la pantalla de tu rival cuando mueves. Toca uno para oírlo.',
   plus_locked: 'Solo con SolRush Plus',
 
   /* ---- rangos ---- */

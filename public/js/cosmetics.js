@@ -36,11 +36,34 @@ export const BADGES = [
   { id: 'skull', free: false },
 ];
 
+/* Sound packs. A pack changes what a move and a wall SOUND like, and the
+   colour of the flash a wall lands with — one choice rather than a row of
+   switches, because what is being sold is an identity, not a mixing desk.
+
+   Whose pack plays is the whole design: yours sounds on your opponent's device
+   as well as your own, for your own moves. That is what makes it worth buying —
+   a sound only you can hear is a setting. It also stays legible, because each
+   player's actions keep a signature of their own instead of the board having
+   one voice.
+
+   'wood' is what the game has always sounded like and stays free. Sound itself
+   is never sold: a game whose free players are silent feels broken, and free
+   players are the opponents the paying ones are here for. */
+export const PACKS = [
+  { id: 'wood', free: true },
+  { id: 'neon', free: false },
+  { id: 'fire', free: false },
+  { id: 'ice', free: false },
+  { id: 'drum', free: false },   // djembé and dundun — the one nobody else has
+];
+
 export const DEFAULT_SKIN = 'classic';
 export const DEFAULT_BADGE = 'none';
+export const DEFAULT_PACK = 'wood';
 
 const skinById = new Map(SKINS.map((s) => [s.id, s]));
 const badgeById = new Map(BADGES.map((b) => [b.id, b]));
+const packById = new Map(PACKS.map((p) => [p.id, p]));
 
 export const isFreeSkin = (id) => Boolean(skinById.get(id)?.free);
 export const isFreeBadge = (id) => Boolean(badgeById.get(id)?.free);
@@ -63,6 +86,12 @@ export function resolveBadge(id, plus = false) {
   const b = badgeById.get(id);
   if (!b) return DEFAULT_BADGE;
   return (b.free || plus) ? b.id : DEFAULT_BADGE;
+}
+
+export function resolvePack(id, plus = false) {
+  const p = packById.get(id);
+  if (!p) return DEFAULT_PACK;
+  return (p.free || plus) ? p.id : DEFAULT_PACK;
 }
 
 /* The photo pawn is a picture the player chose, shrunk in their own browser and

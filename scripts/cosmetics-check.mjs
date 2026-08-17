@@ -144,6 +144,33 @@ try {
   const painted = await ev(`[...document.querySelectorAll('.pawn')].map(p => p.className).join(' | ')`);
   step(String(painted).includes('skin-moss'), `the pawn on the board wears it (${painted})`);
 
+  /* Sound packs. The interesting failure is not "the wrong note played" — it is
+     a pack that throws halfway through building its graph, which kills the move
+     that triggered it and leaves the board frozen with no visible cause. So
+     every pack is asked to synthesise a pawn AND a wall, and the check is that
+     nothing raised. */
+  const packs = await ev(`document.querySelectorAll('#pack-grid .cos-swatch').length`);
+  step(packs === 5, `five sound packs drawn (saw ${packs})`);
+  step(await ev(`document.querySelectorAll('#pack-grid .cos-swatch.locked').length === 4`),
+    'four packs locked for a player without Plus');
+
+  const audio = await ev(`(async () => {
+    try {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return { skipped: true };
+      const ctx = new C();
+      const m = await import('/js/packs.js');
+      for (const id of ['wood', 'neon', 'fire', 'ice', 'drum']) {
+        m.playMove(ctx, id, { wall: false, mine: true });
+        m.playMove(ctx, id, { wall: true, mine: false });
+      }
+      return { ok: true, tints: Object.keys(m.PACK_TINT).length };
+    } catch (e) { return { error: String(e) }; }
+  })()`);
+  step(audio?.ok === true || audio?.skipped === true,
+    `every pack synthesises a move and a wall${audio?.error ? ': ' + audio.error : ''}`);
+  step(audio?.skipped === true || audio?.tints === 5, 'each pack has a wall tint to flash');
+
   step(errors.length === 0, `no console errors${errors.length ? ': ' + errors.slice(0, 3).join(' / ') : ''}`);
 } catch (e) {
   console.error('cosmetics check failed:', e.message);

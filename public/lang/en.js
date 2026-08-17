@@ -133,6 +133,8 @@ export default {
   badges_title: 'Your badge',
   pixel_pick: 'Use my photo',
   pixel_hint: 'Your photo never leaves this device — it is shrunk here and sent as a small image.',
+  packs_title: 'Sound pack',
+  packs_hint: 'Your pack plays on your opponent’s screen too, when you move. Tap one to hear it.',
   plus_locked: 'SolRush Plus only',
 
   /* ---- ranks ---- */

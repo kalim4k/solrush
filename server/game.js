@@ -189,7 +189,7 @@ class Room {
         // other player, already resolved against what their owner may wear.
         opp: {
           nick: opp.nick, points: opp.points,
-          skin: opp.skin, badge: opp.badge, pixel: opp.pixel,
+          skin: opp.skin, badge: opp.badge, pixel: opp.pixel, pack: opp.pack,
         },
       });
     }
