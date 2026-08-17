@@ -6,21 +6,21 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://solrush.onrender.com/</loc>
+    <loc>https://solrush.site/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://solrush.onrender.com/rules/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://solrush.onrender.com/rules/"/>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://solrush.onrender.com/regles/"/>
+    <loc>https://solrush.site/rules/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://solrush.site/rules/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://solrush.site/regles/"/>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://solrush.onrender.com/regles/</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://solrush.onrender.com/rules/"/>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://solrush.onrender.com/regles/"/>
+    <loc>https://solrush.site/regles/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://solrush.site/rules/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://solrush.site/regles/"/>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

@@ -5,4 +5,4 @@ Allow: /
 # nothing anyone can index.
 Disallow: /api/
 
-Sitemap: https://solrush.onrender.com/sitemap.xml
+Sitemap: https://solrush.site/sitemap.xml

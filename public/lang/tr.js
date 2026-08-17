@@ -291,7 +291,7 @@ export default {
     '• Hiçbir şey yüklenmiyor — ekranın üstündeki çevrimdışı uyarısına bak. Yapay zekâya karşı oynamak çevrimdışı çalışır, çevrimiçi oyun çalışmaz.',
     '',
     '## Hâlâ takıldıysan',
-    'contact@solrush.com adresine yaz; ne yaptığını ve bunun yerine ne olduğunu anlat.',
+    'contact@solrush.site adresine yaz; ne yaptığını ve bunun yerine ne olduğunu anlat.',
   ].join('\n'),
 
   terms_title: 'Kullanım koşulları',
@@ -324,7 +324,7 @@ export default {
     'İstediğin an bırakabilirsin. Hesabının silinmesini iste, sileriz.',
     '',
     '## İletişim',
-    'contact@solrush.com',
+    'contact@solrush.site',
   ].join('\n'),
 
   privacy_title: 'Gizlilik',
@@ -361,7 +361,7 @@ export default {
     'Veriler Neon tarafından barındırılan bir Postgres veritabanında durur. Misafir verileri cihaz oynamayı sürdürdüğü sürece tutulur. Hesap verileri silinmesini isteyene kadar tutulur.',
     '',
     '## Hakların',
-    'Hakkında ne tutulduğunu görmek, düzeltmek ya da sildirmek için contact@solrush.com adresine yaz. Bir hesabı silmek e-postasını, parola özetini, puanlarını ve geçmişini kaldırır.',
+    'Hakkında ne tutulduğunu görmek, düzeltmek ya da sildirmek için contact@solrush.site adresine yaz. Bir hesabı silmek e-postasını, parola özetini, puanlarını ve geçmişini kaldırır.',
     '',
     '## Çocuklar',
     'Oyun her yaşa uygundur ama hesap için bir e-posta adresi gerekir. 13 yaşından küçüksen bir hesap açmadan önce ailene sor.',
