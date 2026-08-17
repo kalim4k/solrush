@@ -184,8 +184,13 @@ class Room {
            distinction exists and what happens if you use the wrong one. */
         voice: this.invited,
         clocks: this.clockView(),
-        me: { points: me.points, veteran: me.veteran },
-        opp: { nick: opp.nick, points: opp.points },
+        me: { points: me.points, veteran: me.veteran, plus: Boolean(me.plus) },
+        // The cosmetics are the point of the cosmetics: they travel to the
+        // other player, already resolved against what their owner may wear.
+        opp: {
+          nick: opp.nick, points: opp.points,
+          skin: opp.skin, badge: opp.badge, pixel: opp.pixel,
+        },
       });
     }
     this.hub.onMatchStart?.(this);

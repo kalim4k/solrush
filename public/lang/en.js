@@ -126,6 +126,15 @@ export default {
   veteran: '⭐ Veteran',
   points_label: 'points',
 
+  /* ---- appearance ---- */
+  cosmetics_title: 'Appearance',
+  cosmetics_hint: 'Your opponent sees this — on the board, and next to your name.',
+  skins_title: 'Your pawn',
+  badges_title: 'Your badge',
+  pixel_pick: 'Use my photo',
+  pixel_hint: 'Your photo stays on this device. Only a 12×12 grid of colours is sent.',
+  plus_locked: 'SolRush Plus only',
+
   /* ---- ranks ---- */
   rank_wood: 'Wood',
   rank_stone: 'Stone',

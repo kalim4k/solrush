@@ -127,6 +127,15 @@ export default {
   veteran: '⭐ Vétéran',
   points_label: 'points',
 
+  /* ---- apparence ---- */
+  cosmetics_title: 'Apparence',
+  cosmetics_hint: 'Ton adversaire le voit — sur le plateau, et à côté de ton nom.',
+  skins_title: 'Ton pion',
+  badges_title: 'Ton badge',
+  pixel_pick: 'Utiliser ma photo',
+  pixel_hint: 'Ta photo reste sur cet appareil. Seule une grille de 12×12 couleurs est envoyée.',
+  plus_locked: 'Réservé à SolRush Plus',
+
   /* ---- rangs ---- */
   rank_wood: 'Bois',
   rank_stone: 'Pierre',

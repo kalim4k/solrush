@@ -128,6 +128,15 @@ export default {
   veteran: '⭐ Ветеран',
   points_label: 'очков',
 
+  /* ---- внешний вид ---- */
+  cosmetics_title: 'Внешний вид',
+  cosmetics_hint: 'Соперник это видит — на доске и рядом с вашим именем.',
+  skins_title: 'Ваша фишка',
+  badges_title: 'Ваш значок',
+  pixel_pick: 'Взять моё фото',
+  pixel_hint: 'Фото остаётся на этом устройстве. Отправляется только сетка 12×12 цветов.',
+  plus_locked: 'Только для SolRush Plus',
+
   /* ---- ранги ---- */
   rank_wood: 'Дерево',
   rank_stone: 'Камень',

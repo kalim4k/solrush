@@ -1362,6 +1362,141 @@ html[data-theme="dark"] .legal-links span {
     box-shadow: 0 0 0 4px rgba(255, 255, 255, .95), 0 0 18px 6px rgba(120, 150, 220, .55), inset -4px -7px 10px rgba(0, 0, 0, .35), 0 6px 10px rgba(20, 35, 80, .35);
 }
 
+/* ---- pawn skins ----
+
+   Below .pawn.red / .pawn.blue on purpose: a skin overrides the seat colour,
+   and equal specificity means the later rule wins. Same gradient shape as the
+   originals, so a skinned pawn still reads as the same carved piece rather
+   than a flat disc — the highlight at 31% 24% is what sells the roundness.
+
+   The board still has to be readable at a glance, which is the constraint that
+   picked these hues: no two of them collide at the size a pawn is actually
+   drawn, and none of them is close enough to the wall colours to be mistaken
+   for one mid-game. A skin that makes the position harder to read is a skin
+   that loses games, and nobody buys that twice. */
+.skin-slate {
+    background: radial-gradient(circle at 31% 24%, #e8edf5 0%, #97a4bd 22%, #5c6b87 55%, #232c3f 100%);
+}
+
+.skin-moss {
+    background: radial-gradient(circle at 31% 24%, #dff0d8 0%, #8fc97e 22%, #4f9e43 55%, #1d4a1c 100%);
+}
+
+.skin-amber {
+    background: radial-gradient(circle at 31% 24%, #ffeccc 0%, #ffc45e 22%, #f39c12 55%, #8a4b06 100%);
+}
+
+.skin-ember {
+    background: radial-gradient(circle at 31% 24%, #ffd9c2 0%, #ff8a4c 22%, #e8461f 55%, #7a1606 100%);
+}
+
+.skin-ice {
+    background: radial-gradient(circle at 31% 24%, #eafcff 0%, #8fe4f7 22%, #34b6dd 55%, #0d5670 100%);
+}
+
+.skin-violet {
+    background: radial-gradient(circle at 31% 24%, #efdcff 0%, #b586f5 22%, #7c3fd4 55%, #341066 100%);
+}
+
+.skin-gold {
+    background: radial-gradient(circle at 31% 24%, #fff6d5 0%, #ffdd76 22%, #e0a516 55%, #6d4406 100%);
+}
+
+/* The photo pawn. JS paints the 12x12 grid into a canvas and hands it over as a
+   background image; image-rendering keeps the pixels square instead of letting
+   the browser smooth them back into a blur. The inner shadow from .pawn still
+   applies over the top, which is what stops it looking like a sticker. */
+.skin-pixel {
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+}
+
+/* The specular dot reads as glass on a gradient and as dirt on a photograph. */
+.skin-pixel::after {
+    display: none;
+}
+
+/* ---- badges ----
+
+   Sit beside a nickname wherever one is shown. Emoji rather than images: they
+   need no asset, no colour work for dark mode, and they are the one thing on
+   the page guaranteed to render on a five-year-old Android. */
+.badge {
+    display: inline-block;
+    margin-inline-end: .3em;
+    font-size: .95em;
+    line-height: 1;
+    vertical-align: -.05em;
+}
+
+/* The classic pawn keeps its seat colour, so its swatch has to show both —
+   this rule is only ever used by the picker, never by a pawn. */
+.skin-classic {
+    background: linear-gradient(135deg, #2f6df6 0 50%, #e33d52 50% 100%);
+}
+
+/* ---- the appearance picker ---- */
+.cosmetics-box {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    margin: 14px 0;
+}
+
+.cos-title {
+    margin: 0 0 4px;
+    font-size: 1.05rem;
+}
+
+.cos-sub {
+    margin: 16px 0 8px;
+    font-size: .9rem;
+    color: var(--muted);
+}
+
+/* auto-fill rather than a fixed count: the same grid has to hold nine skins and
+   six badges, on a phone and on a desktop, without a media query for each. */
+.cos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+    gap: 10px;
+}
+
+.cos-swatch {
+    aspect-ratio: 1;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0;
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+    box-shadow: inset -3px -6px 9px rgba(0, 0, 0, .35), inset 2px 3px 5px rgba(255, 255, 255, .25);
+}
+
+.cos-swatch.cos-badge {
+    background: var(--bg);
+    box-shadow: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--muted);
+}
+
+.cos-swatch.on {
+    border-color: var(--violet);
+    /* the ring has to survive the inset shading above, hence its own layer */
+    box-shadow: 0 0 0 3px rgba(47, 109, 246, .3), inset -3px -6px 9px rgba(0, 0, 0, .35);
+}
+
+/* Locked, not hidden. A player who cannot see what they would be buying has no
+   reason to buy it, so the paid skins stay on display and stay dimmed. */
+.cos-swatch.locked {
+    opacity: .35;
+    filter: grayscale(.6);
+}
+
 /* walls: glossy capsules in the owner's color (blue = player 0, red = player 1) */
 .wall {
     position: absolute;

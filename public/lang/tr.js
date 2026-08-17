@@ -128,6 +128,15 @@ export default {
   veteran: '⭐ Kıdemli',
   points_label: 'puan',
 
+  /* ---- görünüm ---- */
+  cosmetics_title: 'Görünüm',
+  cosmetics_hint: 'Rakibin bunu görür — tahtada ve adının yanında.',
+  skins_title: 'Piyonun',
+  badges_title: 'Rozetin',
+  pixel_pick: 'Fotoğrafımı kullan',
+  pixel_hint: 'Fotoğrafın bu cihazda kalır. Yalnızca 12×12 renklik bir ızgara gönderilir.',
+  plus_locked: 'Yalnızca SolRush Plus',
+
   /* ---- rütbeler ---- */
   rank_wood: 'Ahşap',
   rank_stone: 'Taş',

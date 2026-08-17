@@ -642,6 +642,28 @@
                 <p class="hint" id="guest-hint" data-i18n="guest_hint"></p>
             </div>
 
+            <!-- Appearance. Placed above the account box on purpose: it is the
+                 part of this screen a player comes back to, and the thing the
+                 opponent actually sees. Both grids are filled by JS from the
+                 catalogue in cosmetics.js, so adding a skin is one line there
+                 and nothing here. -->
+            <div class="cosmetics-box">
+                <h3 class="cos-title" data-i18n="cosmetics_title"></h3>
+                <p class="hint" data-i18n="cosmetics_hint"></p>
+
+                <h4 class="cos-sub" data-i18n="skins_title"></h4>
+                <div class="cos-grid" id="skin-grid"></div>
+
+                <!-- The photo never leaves the browser: it is drawn into a
+                     canvas, reduced to 12x12, and only those pixels are sent. -->
+                <button class="btn-link" id="btn-pixel" data-i18n="pixel_pick"></button>
+                <input type="file" id="pixel-file" accept="image/*" hidden>
+                <p class="hint" data-i18n="pixel_hint"></p>
+
+                <h4 class="cos-sub" data-i18n="badges_title"></h4>
+                <div class="cos-grid" id="badge-grid"></div>
+            </div>
+
             <!-- guest: auth buttons -->
             <div id="auth-buttons" class="auth-box">
                 <button class="btn-big" id="btn-show-login" data-i18n="login"></button>

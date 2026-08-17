@@ -20,6 +20,13 @@ CREATE TABLE IF NOT EXISTS users (
   last_seen     timestamptz NOT NULL DEFAULT now()
 );
 
+-- CREATE TABLE IF NOT EXISTS does nothing at all to a table that already
+-- exists, so a column added to the block above would never appear on any
+-- database that has been run before — which is every deployed one. New columns
+-- go here instead, where they are applied on every boot and cost nothing when
+-- they are already in place.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS plus boolean NOT NULL DEFAULT false;
+
 -- The leaderboard reads points DESC and nothing else; without this it is a
 -- full scan on every open of the tab.
 CREATE INDEX IF NOT EXISTS users_points_idx ON users (points DESC, wins DESC);

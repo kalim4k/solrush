@@ -1,5 +1,9 @@
 // SolRush client app: screens, board UI, online play (WebSocket), AI mode, auth.
 import { initialState, applyMove, pawnMoves, canPlaceWall, goalRow, cloneState, N } from './engine.js';
+import {
+    SKINS, BADGES, DEFAULT_SKIN, DEFAULT_BADGE,
+    resolveSkin, resolveBadge, decodePixel, isPixelData, PIXEL_SIDE, PIXEL_COLOURS,
+} from './cosmetics.js';
 import { aiMove } from './ai.js';
 import { makeT, LANGS, LANG_CODES, RTL, loadLang } from './i18n.js';
 import { rankOf, nextRank } from './ranks.js';
@@ -253,6 +257,36 @@ let myStreakToday = false;
 // 'none' | 'today' | 'risk' | 'freeze' | 'lost' — the card reads differently in
 // each, because "4 days" after a missed day looks like a broken counter.
 let myStreakState = 'none';
+/* ---- cosmetics ----
+   Chosen locally, sent to the server at hello, and handed to the opponent with
+   the rest of the game_start payload — because a skin only the wearer can see
+   is not worth anything. myPlus is what the SERVER last told us we are entitled
+   to; it is never the authority, only what the picker greys out. */
+let myPlus = false;
+let mySkin = localStorage.getItem('wr_skin') || DEFAULT_SKIN;
+let myBadge = localStorage.getItem('wr_badge') || DEFAULT_BADGE;
+let myPixel = localStorage.getItem('wr_pixel') || '';
+
+/* Every hello carries the same thing, and there are three places that send one
+   — first connect, after logging in, and after logging out. When cosmetics were
+   added, two of them were updated and the third was not, so a player who logged
+   out kept their skin locally and lost it on the board. One builder, no drift. */
+function helloMsg(jwt) {
+    return {
+        t: 'hello',
+        nick: myNick(),
+        token: wsToken,
+        device: deviceId,
+        tz: new Date().getTimezoneOffset(),
+        skin: mySkin,
+        badge: myBadge,
+        // Only sent when it is the chosen skin: a couple of hundred bytes is
+        // nothing, but it has no business riding on every reconnect otherwise.
+        pixel: mySkin === 'pixel' ? myPixel : '',
+        jwt,
+    };
+}
+
 let myStreakBroken = 0;   // days that just broke, any size — what the flame shows
 let myStreakLost = 0;     // days on offer to take back, 0 when there is nothing
 let myStreakFree = false; // this month's free restore is still unspent
@@ -462,7 +496,7 @@ function connectWs() {
         reconnectDelay = 500;
         wsReady = true;
         lastMsgAt = Date.now();
-        wsSend({ t: 'hello', nick: myNick(), token: wsToken, device: deviceId, tz: new Date().getTimezoneOffset(), jwt: session?.access_token });
+        wsSend(helloMsg(session?.access_token));
         if (currentScreen === 'screen-rooms') wsSend({ t: 'lobby_sub' });
     };
     ws.onmessage = (ev) => {
@@ -494,6 +528,15 @@ function handleWsMessage(msg) {
             $('online-count').textContent = msg.online;
             myPoints = msg.points || 0;
             myVeteran = Boolean(msg.veteran);
+            /* The server's verdict on what we may wear, and on what it will
+               actually show the opponent. Taking its answer back rather than
+               keeping our own means a player who is not entitled to a skin
+               sees the same pawn everybody else sees, instead of admiring a
+               gold piece that exists only on their screen. */
+            myPlus = Boolean(msg.plus);
+            if (msg.skin) mySkin = msg.skin;
+            if (msg.badge) myBadge = msg.badge;
+            renderCosmetics();
             myStreak = msg.streak || 0;
             myStreakBest = msg.streakBest || 0;
             myStreakToday = Boolean(msg.streakToday);
@@ -942,6 +985,59 @@ function buildBoard() {
     });
 }
 
+const BADGE_GLYPH = { none: '', flame: '🔥', crown: '👑', star: '⭐', bolt: '⚡', skull: '💀' };
+
+/* A nickname with its owner's badge in front. Built from nodes rather than a
+   template string: the nickname is chosen by another player and arrives over
+   the socket, so it goes in as text and never as markup. */
+function setNickWithBadge(el, nick, badge) {
+    el.textContent = '';
+    const glyph = BADGE_GLYPH[badge] || '';
+    if (glyph) {
+        const b = document.createElement('span');
+        b.className = 'badge';
+        b.textContent = glyph;
+        el.appendChild(b);
+    }
+    el.appendChild(document.createTextNode(String(nick ?? '')));
+}
+
+/* A pawn wears the skin its owner chose, and falls back to its seat colour —
+   for a player with no skin, for the AI, and for an opponent on a build that
+   predates all this. Never leaves a pawn unpainted: an invisible piece is
+   worse than a plain one. */
+function paintPawn(el, skin, pixel, seat, extra = '') {
+    const usePixel = skin === 'pixel' && isPixelData(pixel);
+    const cls = ['pawn'];
+    if (usePixel) cls.push('skin-pixel');
+    else if (skin && skin !== DEFAULT_SKIN && skin !== 'pixel') cls.push('skin-' + skin);
+    else cls.push(seat);
+    if (extra) cls.push(extra);
+    el.className = cls.join(' ');
+    el.style.backgroundImage = usePixel ? pixelURL(pixel) : '';
+}
+
+/* Painted once per distinct photo, not once per render. The board redraws on
+   every move and on every resize; rebuilding a canvas and re-encoding a data
+   URL each time would put an image encode in the middle of the move animation. */
+const pixelCache = new Map();
+function pixelURL(data) {
+    const hit = pixelCache.get(data);
+    if (hit) return hit;
+    const dec = decodePixel(data);
+    if (!dec) return '';
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = PIXEL_SIDE;
+    const ctx = cv.getContext('2d');
+    for (let i = 0; i < PIXEL_SIDE * PIXEL_SIDE; i++) {
+        ctx.fillStyle = dec.palette[parseInt(dec.grid[i], PIXEL_COLOURS)] || '#888888';
+        ctx.fillRect(i % PIXEL_SIDE, (i / PIXEL_SIDE) | 0, 1, 1);
+    }
+    const url = `url("${cv.toDataURL('image/png')}")`;
+    pixelCache.set(data, url);
+    return url;
+}
+
 function positionPawn(i) {
     const p = game.state.pawns[i];
     const v = toView(p.r, p.c);
@@ -983,9 +1079,9 @@ function renderGame() {
 
     const myTurn = s.turn === me && s.winner === null && !game.over;
 
-    // pawns: my pawn gets my color; glowing ring when it's my turn
-    pawnEls[me].className = 'pawn ' + myColor() + (myTurn ? ' glow' : '');
-    pawnEls[1 - me].className = 'pawn ' + oppColor();
+    // pawns: my pawn gets my skin, or my seat colour; glowing ring on my turn
+    paintPawn(pawnEls[me], resolveSkin(mySkin, myPlus), myPixel, myColor(), myTurn ? 'glow' : '');
+    paintPawn(pawnEls[1 - me], game.oppSkin, game.oppPixel, oppColor());
     positionPawn(0);
     positionPawn(1);
 
@@ -1003,7 +1099,7 @@ function renderGame() {
 
     // HUD — rank icons only during play; the number belongs on the result screen
     $('me-nick').textContent = myNick();
-    $('opp-nick').textContent = game.oppNick;
+    setNickWithBadge($('opp-nick'), game.oppNick, game.oppBadge);
     const online = game.mode === 'online';
     $('me-rank').textContent = online ? rankIcon(myPoints) : '';
     $('opp-rank').textContent = online ? rankIcon(game.oppPoints || 0) : '';
@@ -1330,6 +1426,13 @@ function startOnlineGame(msg) {
         myIndex: msg.you,
         oppNick: msg.opp?.nick || '???',
         oppPoints: msg.opp?.points || 0,
+        /* Already resolved by the server against what that player is entitled
+           to wear, so these are taken as given. Doing the check again here
+           would only mean two places to keep in step, and this one is the copy
+           an opponent could edit. */
+        oppSkin: msg.opp?.skin || DEFAULT_SKIN,
+        oppBadge: msg.opp?.badge || DEFAULT_BADGE,
+        oppPixel: msg.opp?.pixel || '',
         ranked: msg.ranked !== false,
         clocks: { ...msg.clocks, recvAt: Date.now() },
         over: false,
@@ -1756,6 +1859,134 @@ const daysPhrase = (n, key = 'streak_days') =>
 
 // The flame in the home header: the one place a returning player sees it
 // before they have done anything.
+/* ---------- appearance ---------- */
+
+function cosSave() {
+    localStorage.setItem('wr_skin', mySkin);
+    localStorage.setItem('wr_badge', myBadge);
+    if (myPixel) localStorage.setItem('wr_pixel', myPixel);
+    /* Re-introduce ourselves rather than inventing a "cosmetics changed"
+       message. hello already carries the whole identity and the server already
+       resolves it against the account; a second path would be a second place
+       to forget when a skin is added. */
+    wsSend(helloMsg(session?.access_token));
+    renderCosmetics();
+    if (game) renderGame();
+}
+
+function cosSwatch(id, isBadge, chosen, locked) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cos-swatch' + (isBadge ? ' cos-badge' : ' skin-' + id)
+        + (chosen ? ' on' : '') + (locked ? ' locked' : '');
+    if (isBadge) b.textContent = BADGE_GLYPH[id] || '·';
+    // The ids are not translated, but they are all a screen reader has here.
+    b.setAttribute('aria-label', id);
+    b.setAttribute('aria-pressed', String(chosen));
+    return b;
+}
+
+function renderCosmetics() {
+    const skinBox = $('skin-grid'), badgeBox = $('badge-grid');
+    if (!skinBox || !badgeBox) return;
+
+    skinBox.textContent = '';
+    for (const s of SKINS) {
+        const locked = !s.free && !myPlus;
+        const el = cosSwatch(s.id, false, s.id === mySkin, locked);
+        // The photo swatch shows the photo, once there is one to show.
+        if (s.id === 'pixel' && isPixelData(myPixel)) el.style.backgroundImage = pixelURL(myPixel);
+        el.addEventListener('click', () => {
+            if (locked) return toast(t('plus_locked'));
+            // Choosing the photo swatch with no photo yet means "pick one".
+            if (s.id === 'pixel' && !isPixelData(myPixel)) return $('pixel-file').click();
+            mySkin = s.id;
+            cosSave();
+        });
+        skinBox.appendChild(el);
+    }
+
+    badgeBox.textContent = '';
+    for (const b of BADGES) {
+        const locked = !b.free && !myPlus;
+        const el = cosSwatch(b.id, true, b.id === myBadge, locked);
+        el.addEventListener('click', () => {
+            if (locked) return toast(t('plus_locked'));
+            myBadge = b.id;
+            cosSave();
+        });
+        badgeBox.appendChild(el);
+    }
+}
+
+/* A photo reduced to twelve colours on a twelve-square grid.
+
+   Nothing is uploaded. The file is decoded in the page, drawn into a canvas at
+   12x12, and only the resulting couple of hundred characters ever go anywhere
+   — which is why this needs no image hosting, and why a face at this size is
+   its own moderation. */
+async function encodePixel(file) {
+    const bitmap = await createImageBitmap(file);
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = PIXEL_SIDE;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    // Centre-crop to a square: a face cropped beats a face with bars round it.
+    const side = Math.min(bitmap.width, bitmap.height);
+    ctx.drawImage(bitmap,
+        (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side,
+        0, 0, PIXEL_SIDE, PIXEL_SIDE);
+    bitmap.close?.();
+
+    const { data } = ctx.getImageData(0, 0, PIXEL_SIDE, PIXEL_SIDE);
+    const px = [];
+    for (let i = 0; i < PIXEL_SIDE * PIXEL_SIDE; i++) {
+        px.push([data[i * 4], data[i * 4 + 1], data[i * 4 + 2]]);
+    }
+
+    /* Coarse buckets before counting, so a hundred nearly identical browns
+       count as one colour. Without this the twelve slots all go to shades of
+       the same cheek and the picture comes out flat. */
+    const counts = new Map();
+    for (const [r, g, b] of px) {
+        const key = ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5);
+        counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const palette = [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, PIXEL_COLOURS)
+        .map(([k]) => [((k >> 6) & 7) * 36, ((k >> 3) & 7) * 36, (k & 7) * 36]);
+    while (palette.length < PIXEL_COLOURS) palette.push([136, 136, 136]);
+
+    const nib = (v) => Math.max(0, Math.min(15, Math.round(v / 17))).toString(16);
+    const digits = '0123456789ab';
+    let out = 'P' + palette.map(([r, g, b]) => nib(r) + nib(g) + nib(b)).join('');
+    for (const [r, g, b] of px) {
+        let best = 0, bd = Infinity;
+        for (let i = 0; i < PIXEL_COLOURS; i++) {
+            const d = (palette[i][0] - r) ** 2 + (palette[i][1] - g) ** 2 + (palette[i][2] - b) ** 2;
+            if (d < bd) { bd = d; best = i; }
+        }
+        out += digits[best];
+    }
+    return out;
+}
+
+$('btn-pixel').addEventListener('click', () => {
+    if (!myPlus) return toast(t('plus_locked'));
+    $('pixel-file').click();
+});
+
+$('pixel-file').addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';        // so picking the same file twice still fires
+    if (!file || !myPlus) return;
+    try {
+        myPixel = await encodePixel(file);
+        mySkin = 'pixel';
+        cosSave();
+    } catch { toast(t('err_generic')); }
+});
+
 function renderStreak() {
     const pill = $('streak-pill');
     // The flame always carries the number, alive or broken. It is the streak
@@ -2175,7 +2406,7 @@ async function afterLogin() {
     renderStreak();
     showNickNotice();
     // re-identify on the game server under the account nick
-    wsSend({ t: 'hello', nick: myNick(), token: wsToken, device: deviceId, tz: new Date().getTimezoneOffset(), jwt: session.access_token });
+    wsSend(helloMsg(session.access_token));
 }
 
 // A nickname that broke the rules was replaced by hand. The player is told
@@ -2201,7 +2432,7 @@ $('btn-logout').addEventListener('click', async () => {
     session = null;
     profile = null;
     updateProfileUI();
-    wsSend({ t: 'hello', nick: myNick(), token: wsToken, device: deviceId, tz: new Date().getTimezoneOffset() });
+    wsSend(helloMsg());
 });
 
 /* ================= settings ================= */

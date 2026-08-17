@@ -22,6 +22,11 @@ import {
   register, login, readToken, userById, startReset, finishReset,
 } from './auth.js';
 import { Hub } from './game.js';
+// The catalogue lives with the client because that is where it is drawn, but
+// the server is what decides who may wear what — so both read the same file.
+import {
+  DEFAULT_SKIN, DEFAULT_BADGE, resolveSkin, resolveBadge, isPixelData,
+} from '../public/js/cosmetics.js';
 import { getStreak, touchStreak, restoreStreak, mergeDeviceStreak } from './streak.js';
 import { checkNick, randomNick } from '../public/js/nick.js';
 
@@ -449,6 +454,13 @@ class Client {
     this.tz = 0;
     this.points = 0;
     this.veteran = false;
+    /* Defaults, not blanks: a client that reconnects mid-game keeps its seat
+       and everything on it, so these have to be valid before the first hello
+       rather than filled in by it. */
+    this.plus = false;
+    this.skin = DEFAULT_SKIN;
+    this.badge = DEFAULT_BADGE;
+    this.pixel = '';
     this.room = null;
     this.side = -1;
     this.awaySince = 0;
@@ -505,12 +517,25 @@ wss.on('connection', (ws) => {
           client.nick = user.nick;
           client.points = user.points;
           client.veteran = user.veteran;
+          client.plus = Boolean(user.plus);
         }
       }
       if (!client.userId) {
         const n = String(msg.nick || '').trim();
         client.nick = (!n || checkNick(n)) ? randomNick() : n.slice(0, 16);
       }
+
+      /* Cosmetics are chosen in the browser, so they arrive as a request, not
+         as a fact. Resolving them here against what the account actually owns
+         is the whole enforcement: a player who edits their own copy of the
+         catalogue, or types a skin id into a socket frame, gets the default
+         back and their opponent's board never shows it. The pixel pawn is held
+         to a fixed-length format, so a malformed one costs its owner the skin
+         and cannot become a payload. */
+      client.skin = resolveSkin(msg.skin, client.plus);
+      client.badge = resolveBadge(msg.badge, client.plus);
+      client.pixel = (client.skin === 'pixel' && isPixelData(msg.pixel)) ? msg.pixel : '';
+      if (client.skin === 'pixel' && !client.pixel) client.skin = 'classic';
 
       hub.attach(client);
 
@@ -526,6 +551,12 @@ wss.on('connection', (ws) => {
         online: hub.online,
         points: client.points,
         veteran: client.veteran,
+        // What the client is entitled to wear, so its picker can grey out the
+        // rest. Advisory only — the board is painted from what the server
+        // resolved above, not from this.
+        plus: client.plus,
+        skin: client.skin,
+        badge: client.badge,
         ...streak,
       });
 
