@@ -18,7 +18,8 @@
     "smoke:voice": "node scripts/voice-check.mjs",
     "smoke:drop": "node scripts/reconnect-check.mjs",
     "db:push": "node server/migrate.js",
-    "smoke:cos": "node scripts/cosmetics-check.mjs"
+    "smoke:cos": "node scripts/cosmetics-check.mjs",
+    "smoke:stats": "node scripts/stats-check.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1",

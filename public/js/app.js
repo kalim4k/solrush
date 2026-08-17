@@ -607,6 +607,22 @@ function handleWsMessage(msg) {
                 onGameOver(msg.winner === msg.you, msg.reason);
             }
             break;
+        /* The account's own totals, sent by the server once it has actually
+           written them. `profile` used to be fetched once at login and never
+           read again, so games, wins and losses sat at zero however long you
+           played, until a reload. Asking for them on game_over does not work
+           either: that message goes out before the write lands. */
+        case 'stats':
+            if (profile) {
+                profile.wins = msg.wins;
+                profile.losses = msg.losses;
+                profile.points = msg.points;
+                profile.veteran = msg.veteran;
+            }
+            myPoints = msg.points ?? myPoints;
+            myVeteran = Boolean(msg.veteran);
+            updateProfileUI();
+            break;
         case 'streak':
             myStreak = msg.streak || 0;
             myStreakBest = msg.best || myStreakBest;

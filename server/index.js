@@ -421,7 +421,7 @@ const hub = new Hub({
         const won = side === winner;
 
         if (p.userId && room.ranked) {
-          await q(
+          const row = await one(
             `UPDATE users
                 SET points = $2,
                     wins   = wins   + $3,
@@ -429,9 +429,24 @@ const hub = new Hub({
                     -- twenty finished games is what separates somebody who plays
                     -- from somebody who tried it once
                     veteran = (wins + losses + 1) >= 20
-              WHERE id = $1`,
+              WHERE id = $1
+          RETURNING points, wins, losses, veteran`,
             [p.userId, p.points, won ? 1 : 0, won ? 0 : 1],
           );
+
+          /* Pushed, because the client cannot ask at the right moment.
+
+             game_over is sent from Room.end() and this runs afterwards, so a
+             client that answered game_over by re-fetching its profile raced
+             this write and lost it — reliably, since a database round trip is
+             slower than a fetch that has already been queued. The player then
+             saw a profile still reading zero games after a whole evening, and
+             only a page reload would fix it.
+
+             The streak below has always worked this way for the same reason.
+             RETURNING costs nothing extra and makes these the real numbers
+             rather than an increment guessed on the client. */
+          if (row) p.send({ t: 'stats', ...row });
         }
 
         // The streak counts games played, not games won. Tying it to winning
