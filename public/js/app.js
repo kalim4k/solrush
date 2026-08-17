@@ -2,7 +2,7 @@
 import { initialState, applyMove, pawnMoves, canPlaceWall, goalRow, cloneState, N } from './engine.js';
 import {
     SKINS, BADGES, DEFAULT_SKIN, DEFAULT_BADGE,
-    resolveSkin, resolveBadge, decodePixel, isPixelData, PIXEL_SIDE, PIXEL_COLOURS,
+    resolveSkin, resolveBadge, isPhoto, PHOTO_SIDE, PHOTO_MAX_CHARS,
 } from './cosmetics.js';
 import { aiMove } from './ai.js';
 import { makeT, LANGS, LANG_CODES, RTL, loadLang } from './i18n.js';
@@ -286,7 +286,7 @@ function helloMsg(jwt) {
         badge: localStorage.getItem('wr_badge') || '',
         // Only with the skin that uses it: 2.4 KB has no business riding on
         // every reconnect otherwise.
-        pixel: mySkin === 'pixel' ? myPixel : '',
+        pixel: mySkin === 'photo' ? myPixel : '',
         jwt,
     };
 }
@@ -1003,16 +1003,16 @@ const BADGE_GLYPH = { none: '', flame: '🔥', crown: '👑', star: '⭐', bolt:
    rank styling hangs off. */
 function paintChipBall(el, skin, pixel, seat) {
     if (!el) return;
-    const usePixel = skin === 'pixel' && isPixelData(pixel);
+    const usePixel = skin === 'photo' && isPhoto(pixel);
     const cls = ['chip-ball', seat];
-    if (usePixel) cls.push('skin-pixel');
-    else if (skin && skin !== DEFAULT_SKIN && skin !== 'pixel') cls.push('skin-' + skin);
+    if (usePixel) cls.push('skin-photo');
+    else if (skin && skin !== DEFAULT_SKIN && skin !== 'photo') cls.push('skin-' + skin);
     el.className = cls.join(' ');
     // Clear the shorthand first: applyChipBallColors() writes an inline
     // `background` for unskinned balls, and that shorthand would otherwise sit
     // on top of the photo set on the next line.
     el.style.background = '';
-    el.style.backgroundImage = usePixel ? pixelURL(pixel) : '';
+    el.style.backgroundImage = usePixel ? photoURL(pixel) : '';
 }
 
 /* A nickname with its owner's badge in front. Built from nodes rather than a
@@ -1035,35 +1035,24 @@ function setNickWithBadge(el, nick, badge) {
    predates all this. Never leaves a pawn unpainted: an invisible piece is
    worse than a plain one. */
 function paintPawn(el, skin, pixel, seat, extra = '') {
-    const usePixel = skin === 'pixel' && isPixelData(pixel);
+    const usePixel = skin === 'photo' && isPhoto(pixel);
     const cls = ['pawn'];
-    if (usePixel) cls.push('skin-pixel');
-    else if (skin && skin !== DEFAULT_SKIN && skin !== 'pixel') cls.push('skin-' + skin);
+    if (usePixel) cls.push('skin-photo');
+    else if (skin && skin !== DEFAULT_SKIN && skin !== 'photo') cls.push('skin-' + skin);
     else cls.push(seat);
     if (extra) cls.push(extra);
     el.className = cls.join(' ');
-    el.style.backgroundImage = usePixel ? pixelURL(pixel) : '';
+    el.style.backgroundImage = usePixel ? photoURL(pixel) : '';
 }
 
-/* Painted once per distinct photo, not once per render. The board redraws on
-   every move and on every resize; rebuilding a canvas and re-encoding a data
-   URL each time would put an image encode in the middle of the move animation. */
-const pixelCache = new Map();
-function pixelURL(data) {
-    const hit = pixelCache.get(data);
-    if (hit) return hit;
-    const dec = decodePixel(data);
-    if (!dec) return '';
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = PIXEL_SIDE;
-    const ctx = cv.getContext('2d');
-    for (let i = 0; i < PIXEL_SIDE * PIXEL_SIDE; i++) {
-        ctx.fillStyle = dec.palette[parseInt(dec.grid[i], PIXEL_COLOURS)] || '#888888';
-        ctx.fillRect(i % PIXEL_SIDE, (i / PIXEL_SIDE) | 0, 1, 1);
-    }
-    const url = `url("${cv.toDataURL('image/png')}")`;
-    pixelCache.set(data, url);
-    return url;
+/* The photo is already a data URL, so this is only quoting.
+
+   The quotes matter: a data URL contains commas, semicolons and slashes, and an
+   unquoted url() ends at the first one the parser dislikes. It cannot contain a
+   double quote — isPhoto() allows base64 characters only — so quoting is safe
+   without escaping. */
+function photoURL(data) {
+    return isPhoto(data) ? `url("${data}")` : '';
 }
 
 function positionPawn(i) {
@@ -1869,9 +1858,9 @@ function updateProfileUI() {
        until a seat is assigned. */
     const skin = resolveSkin(mySkin, myPlus);
     const av = $('profile-avatar');
-    const usePixel = skin === 'pixel' && isPixelData(myPixel);
+    const usePixel = skin === 'photo' && isPhoto(myPixel);
     av.className = 'avatar' + (skin !== DEFAULT_SKIN && !usePixel ? ' skin-' + skin : '');
-    av.style.backgroundImage = usePixel ? pixelURL(myPixel) : '';
+    av.style.backgroundImage = usePixel ? photoURL(myPixel) : '';
     av.textContent = (skin === DEFAULT_SKIN && !usePixel) ? nick[0].toUpperCase() : '';
     renderRankCard();
     const wins = profile?.wins || 0, losses = profile?.losses || 0;
@@ -1949,11 +1938,11 @@ function renderCosmetics() {
         const locked = !s.free && !myPlus;
         const el = cosSwatch(s.id, false, s.id === mySkin, locked);
         // The photo swatch shows the photo, once there is one to show.
-        if (s.id === 'pixel' && isPixelData(myPixel)) el.style.backgroundImage = pixelURL(myPixel);
+        if (s.id === 'photo' && isPhoto(myPixel)) el.style.backgroundImage = photoURL(myPixel);
         el.addEventListener('click', () => {
             if (locked) return toast(t('plus_locked'));
             // Choosing the photo swatch with no photo yet means "pick one".
-            if (s.id === 'pixel' && !isPixelData(myPixel)) return $('pixel-file').click();
+            if (s.id === 'photo' && !isPhoto(myPixel)) return $('pixel-file').click();
             mySkin = s.id;
             cosSave();
         });
@@ -1979,52 +1968,45 @@ function renderCosmetics() {
    12x12, and only the resulting couple of hundred characters ever go anywhere
    — which is why this needs no image hosting, and why a face at this size is
    its own moderation. */
-async function encodePixel(file) {
+async function encodePhoto(file) {
     const bitmap = await createImageBitmap(file);
     const cv = document.createElement('canvas');
-    cv.width = cv.height = PIXEL_SIDE;
-    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    cv.width = cv.height = PHOTO_SIDE;
+    const ctx = cv.getContext('2d');
     // Centre-crop to a square: a face cropped beats a face with bars round it.
     const side = Math.min(bitmap.width, bitmap.height);
     ctx.drawImage(bitmap,
         (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side,
-        0, 0, PIXEL_SIDE, PIXEL_SIDE);
+        0, 0, PHOTO_SIDE, PHOTO_SIDE);
     bitmap.close?.();
 
-    const { data } = ctx.getImageData(0, 0, PIXEL_SIDE, PIXEL_SIDE);
-    const px = [];
-    for (let i = 0; i < PIXEL_SIDE * PIXEL_SIDE; i++) {
-        px.push([data[i * 4], data[i * 4 + 1], data[i * 4 + 2]]);
+    /* WebP where the browser can encode it, JPEG where it cannot. toDataURL
+       does NOT throw on a format it does not support — it quietly returns a
+       PNG instead, and a PNG of a photograph is several times the size of
+       either. So the test is on what came back, never on what was asked for.
+
+       Then quality steps down until it fits the budget. A single pass at a
+       fixed quality is what produces the occasional 40 KB pawn from a busy
+       picture: the weight of a compressed photograph depends on the
+       photograph, so the loop has to look. */
+    const encode = (type, q) => {
+        const url = cv.toDataURL(type, q);
+        return url.startsWith('data:' + type) ? url : null;
+    };
+    const type = encode('image/webp', 0.8) ? 'image/webp' : 'image/jpeg';
+
+    for (const q of [0.82, 0.7, 0.6, 0.5, 0.4]) {
+        const out = encode(type, q) || cv.toDataURL('image/jpeg', q);
+        if (out.length <= PHOTO_MAX_CHARS) return out;
     }
 
-    /* Buckets before counting, so a thousand nearly identical browns compete
-       for one slot instead of sixteen. Four bits a channel rather than three:
-       at 48x48 the coarser grid was throwing away the difference between a
-       cheek and the shadow under it, which is most of what makes a face a
-       face. Then the most-used buckets win the palette. */
-    const counts = new Map();
-    for (const [r, g, b] of px) {
-        const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
-        counts.set(key, (counts.get(key) || 0) + 1);
-    }
-    const palette = [...counts.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, PIXEL_COLOURS)
-        .map(([k]) => [((k >> 8) & 15) * 17, ((k >> 4) & 15) * 17, (k & 15) * 17]);
-    while (palette.length < PIXEL_COLOURS) palette.push([136, 136, 136]);
-
-    const nib = (v) => Math.max(0, Math.min(15, Math.round(v / 17))).toString(16);
-    const digits = '0123456789abcdef';
-    let out = 'P' + palette.map(([r, g, b]) => nib(r) + nib(g) + nib(b)).join('');
-    for (const [r, g, b] of px) {
-        let best = 0, bd = Infinity;
-        for (let i = 0; i < PIXEL_COLOURS; i++) {
-            const d = (palette[i][0] - r) ** 2 + (palette[i][1] - g) ** 2 + (palette[i][2] - b) ** 2;
-            if (d < bd) { bd = d; best = i; }
-        }
-        out += digits[best];
-    }
-    return out;
+    /* Still over budget at the lowest quality, which a very noisy image can
+       manage. Halve the size rather than refuse: every exit from here that is
+       not an image is a player who paid for this and did not get it. */
+    const small = document.createElement('canvas');
+    small.width = small.height = PHOTO_SIDE / 2;
+    small.getContext('2d').drawImage(cv, 0, 0, small.width, small.height);
+    return small.toDataURL('image/jpeg', 0.6);
 }
 
 $('btn-pixel').addEventListener('click', () => {
@@ -2037,8 +2019,8 @@ $('pixel-file').addEventListener('change', async (e) => {
     e.target.value = '';        // so picking the same file twice still fires
     if (!file || !myPlus) return;
     try {
-        myPixel = await encodePixel(file);
-        mySkin = 'pixel';
+        myPixel = await encodePhoto(file);
+        mySkin = 'photo';
         cosSave();
     } catch { toast(t('err_generic')); }
 });

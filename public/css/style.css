@@ -1402,18 +1402,17 @@ html[data-theme="dark"] .legal-links span {
     background: radial-gradient(circle at 31% 24%, #fff6d5 0%, #ffdd76 22%, #e0a516 55%, #6d4406 100%);
 }
 
-/* The photo pawn. JS paints the 12x12 grid into a canvas and hands it over as a
-   background image; image-rendering keeps the pixels square instead of letting
-   the browser smooth them back into a blur. The inner shadow from .pawn still
-   applies over the top, which is what stops it looking like a sticker. */
-.skin-pixel {
+/* The photo pawn. The picture is a data URL set inline by JS; letting the
+   browser smooth it is the whole point now — it is a photograph, not a
+   mosaic. The inner shadow from .pawn still applies over the top, which is
+   what stops it looking like a sticker stuck on the board. */
+.skin-photo {
     background-size: cover;
     background-position: center;
-    image-rendering: pixelated;
 }
 
 /* The specular dot reads as glass on a gradient and as dirt on a photograph. */
-.skin-pixel::after {
+.skin-photo::after {
     display: none;
 }
 
@@ -1436,7 +1435,6 @@ html[data-theme="dark"] .legal-links span {
 .avatar[style*="background-image"] {
     background-size: cover;
     background-position: center;
-    image-rendering: pixelated;
     color: transparent;
 }
 
@@ -1483,7 +1481,6 @@ html[data-theme="dark"] .legal-links span {
     padding: 0;
     background-size: cover;
     background-position: center;
-    image-rendering: pixelated;
     box-shadow: inset -3px -6px 9px rgba(0, 0, 0, .35), inset 2px 3px 5px rgba(255, 255, 255, .25);
 }
 

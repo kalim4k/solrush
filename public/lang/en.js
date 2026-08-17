@@ -132,7 +132,7 @@ export default {
   skins_title: 'Your pawn',
   badges_title: 'Your badge',
   pixel_pick: 'Use my photo',
-  pixel_hint: 'Your photo stays on this device. Only a 12×12 grid of colours is sent.',
+  pixel_hint: 'Your photo never leaves this device — it is shrunk here and sent as a small image.',
   plus_locked: 'SolRush Plus only',
 
   /* ---- ranks ---- */

@@ -21,7 +21,7 @@ export const SKINS = [
   { id: 'ice', free: false },
   { id: 'violet', free: false },
   { id: 'gold', free: false },
-  { id: 'pixel', free: false },    // the player's own photo, reduced to 12x12
+  { id: 'photo', free: false },    // the player's own picture
 ];
 
 /* Badges sit next to the nickname. Only one is free, on purpose: the badge is
@@ -65,43 +65,39 @@ export function resolveBadge(id, plus = false) {
   return (b.free || plus) ? b.id : DEFAULT_BADGE;
 }
 
-/* The pixel pawn is a photo the player chose, reduced in their own browser to a
-   grid of palette indices and sent as text — never uploaded. Nothing to host,
-   nothing to cache, and no photographs of faces sitting on the server.
+/* The photo pawn is a picture the player chose, shrunk in their own browser and
+   carried as a data URL — never uploaded. Nothing to host, nothing to cache,
+   and no photograph of anyone's face sitting on a server.
 
-   It started at 12x12, chosen so that nothing recognisable could survive: the
-   resolution was meant to be the moderation. That was the wrong trade. Nobody
-   could recognise THEMSELVES either, and a pawn you cannot be recognised in is
-   worthless for the one thing it is for — being seen wearing it. A cosmetic
-   that fails to identify its owner is not a cosmetic.
+   It went through two wrong shapes before this one. First 12x12 indexed
+   colour, on the theory that the resolution could serve as moderation; nobody
+   could recognise themselves in it, and a pawn you cannot be recognised in is
+   worthless for the only thing it is for. Then 48x48 in sixteen colours, which
+   was recognisable and still visibly a mosaic. The player asked for the actual
+   picture, and they were right to: the point of wearing your own face is that
+   it looks like your face.
 
-   So 48x48 with sixteen colours: about 2.4 KB of text, sent once when the
-   socket opens rather than per move, and a face that reads as that face at the
-   size a pawn is actually drawn.
+   So: a real image, compressed. PHOTO_SIDE square, WebP where the browser can
+   encode it and JPEG otherwise, quality tuned down until it fits the budget
+   below. A pawn is drawn at roughly 33 CSS pixels, so 128 covers a 3x display
+   with room to spare and costs a few kilobytes — comparable to the mosaic it
+   replaces, and sent once when the socket opens rather than per move.
 
-   What that costs: an offensive picture is now legible too. The mitigation is
-   not resolution any more, it is accountability — custom pawns are a Plus
-   feature, so every one of them belongs to a paying account with an email
-   behind it, which is a far better position to act from than an anonymous
-   upload would have been.
+   Moderation is accountability, not resolution: the photo pawn is a Plus
+   feature, so every picture belongs to a paying account with an email behind
+   it. That is a far better position to act from than an anonymous upload. */
+export const PHOTO_SIDE = 128;
+export const PHOTO_MAX_CHARS = 12_000;      // ~9 KB of image, generously sized
 
-   Format: "P" + 16 colours as 3-digit hex + 2304 characters indexing them. */
-export const PIXEL_SIDE = 48;
-export const PIXEL_COLOURS = 16;
-const PIXEL_RE = /^P([0-9a-f]{3}){16}[0-9a-f]{2304}$/;
+/* Deliberately not a general data-URL check.
 
-export function isPixelData(s) {
-  return typeof s === 'string' && PIXEL_RE.test(s);
-}
+   This string is handed to background-image: url(...), so what it may contain
+   is a security question, not a formatting one. Three raster types, base64
+   only, length capped. SVG is excluded on purpose and must stay excluded: an
+   SVG is a document, it can carry script, and "image" in its MIME type is the
+   only thing about it that resembles a photograph. */
+const PHOTO_RE = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/]+={0,2}$/;
 
-// Palette first, then the grid, so a reader can decode it in one pass.
-export function decodePixel(s) {
-  if (!isPixelData(s)) return null;
-  const palette = [];
-  for (let i = 0; i < PIXEL_COLOURS; i++) {
-    const h = s.slice(1 + i * 3, 4 + i * 3);
-    palette.push('#' + h[0] + h[0] + h[1] + h[1] + h[2] + h[2]);
-  }
-  const grid = s.slice(1 + PIXEL_COLOURS * 3);
-  return { palette, grid };
+export function isPhoto(s) {
+  return typeof s === 'string' && s.length <= PHOTO_MAX_CHARS && PHOTO_RE.test(s);
 }

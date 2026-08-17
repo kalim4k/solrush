@@ -131,7 +131,7 @@ export default {
   skins_title: 'Tu peón',
   badges_title: 'Tu distintivo',
   pixel_pick: 'Usar mi foto',
-  pixel_hint: 'Tu foto se queda en este dispositivo. Solo se envía una rejilla de 12×12 colores.',
+  pixel_hint: 'Tu foto no sale de este dispositivo: se reduce aquí y se envía como una imagen pequeña.',
   plus_locked: 'Solo con SolRush Plus',
 
   /* ---- rangos ---- */

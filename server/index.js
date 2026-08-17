@@ -25,7 +25,7 @@ import { Hub } from './game.js';
 // The catalogue lives with the client because that is where it is drawn, but
 // the server is what decides who may wear what — so both read the same file.
 import {
-  DEFAULT_SKIN, DEFAULT_BADGE, resolveSkin, resolveBadge, isPixelData,
+  DEFAULT_SKIN, DEFAULT_BADGE, resolveSkin, resolveBadge, isPhoto,
 } from '../public/js/cosmetics.js';
 import { getStreak, touchStreak, restoreStreak, mergeDeviceStreak } from './streak.js';
 import { checkNick, randomNick } from '../public/js/nick.js';
@@ -547,8 +547,8 @@ wss.on('connection', (ws) => {
       };
       client.skin = resolveSkin(wants.skin, client.plus);
       client.badge = resolveBadge(wants.badge, client.plus);
-      client.pixel = (client.skin === 'pixel' && isPixelData(wants.pixel)) ? wants.pixel : '';
-      if (client.skin === 'pixel' && !client.pixel) client.skin = DEFAULT_SKIN;
+      client.pixel = (client.skin === 'photo' && isPhoto(wants.pixel)) ? wants.pixel : '';
+      if (client.skin === 'photo' && !client.pixel) client.skin = DEFAULT_SKIN;
 
       /* Persisted so the leaderboard can show a badge belonging to somebody who
          is not connected — which is nearly everybody on it. Fire and forget:

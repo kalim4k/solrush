@@ -133,7 +133,7 @@ export default {
   skins_title: 'Ton pion',
   badges_title: 'Ton badge',
   pixel_pick: 'Utiliser ma photo',
-  pixel_hint: 'Ta photo reste sur cet appareil. Seule une grille de 12×12 couleurs est envoyée.',
+  pixel_hint: 'Ta photo ne quitte pas cet appareil — elle est réduite ici et envoyée comme une petite image.',
   plus_locked: 'Réservé à SolRush Plus',
 
   /* ---- rangs ---- */

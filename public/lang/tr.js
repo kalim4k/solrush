@@ -134,7 +134,7 @@ export default {
   skins_title: 'Piyonun',
   badges_title: 'Rozetin',
   pixel_pick: 'Fotoğrafımı kullan',
-  pixel_hint: 'Fotoğrafın bu cihazda kalır. Yalnızca 12×12 renklik bir ızgara gönderilir.',
+  pixel_hint: 'Fotoğrafın bu cihazdan çıkmaz — burada küçültülür ve küçük bir görsel olarak gönderilir.',
   plus_locked: 'Yalnızca SolRush Plus',
 
   /* ---- rütbeler ---- */
