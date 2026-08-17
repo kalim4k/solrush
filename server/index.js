@@ -17,7 +17,7 @@ import { dirname, join, normalize, extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { WebSocketServer } from 'ws';
 
-import { q, one } from './db.js';
+import { q, one, migrate } from './db.js';
 import {
   register, login, readToken, userById, startReset, finishReset,
 } from './auth.js';
@@ -621,6 +621,26 @@ wss.on('connection', (ws) => {
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
 });
+
+/* Bring the schema up to date before taking traffic.
+
+   This used to be a manual `npm run db:push`, and nothing in the deploy runs
+   it: Render builds with npm ci and starts with npm start. So the first time a
+   column was added — users.plus — the code that reads it went live against a
+   database that had never heard of it, and every login answered 500 while the
+   game itself carried on looking perfectly healthy. A schema change that needs
+   a step nobody performs is a schema change that does not happen.
+
+   Safe to repeat: every statement in schema.sql is guarded with IF NOT EXISTS,
+   so this is a few milliseconds of no-ops on a database that is already
+   current. And it must not be fatal — if the database is unreachable the game
+   should still open and still play, because guests and AI games need nothing
+   from it; only the parts that use accounts should suffer. */
+try {
+  await migrate();
+} catch (err) {
+  console.error('schema not applied:', err.message, '— accounts may not work');
+}
 
 server.listen(PORT, () => {
   console.log(`solrush listening on http://localhost:${PORT}`);
