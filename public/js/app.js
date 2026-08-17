@@ -253,6 +253,7 @@ let myStreakToday = false;
 // 'none' | 'today' | 'risk' | 'freeze' | 'lost' — the card reads differently in
 // each, because "4 days" after a missed day looks like a broken counter.
 let myStreakState = 'none';
+let myStreakBroken = 0;   // days that just broke, any size — what the flame shows
 let myStreakLost = 0;     // days on offer to take back, 0 when there is nothing
 let myStreakFree = false; // this month's free restore is still unspent
 // Below this there is nothing worth buying back: "get 1 day back" reads as a
@@ -497,6 +498,7 @@ function handleWsMessage(msg) {
             myStreakBest = msg.streakBest || 0;
             myStreakToday = Boolean(msg.streakToday);
             myStreakState = msg.streakState || 'none';
+            myStreakBroken = msg.streakBroken || 0;
             myStreakLost = msg.streakLost || 0;
             myStreakFree = Boolean(msg.streakFree);
             renderStreakOffer();
@@ -556,6 +558,7 @@ function handleWsMessage(msg) {
             myStreakBest = msg.best || myStreakBest;
             myStreakToday = true;   // this message only arrives after a match today
             myStreakState = 'today';
+            myStreakBroken = 0;      // a game today started a fresh run either way
             myStreakLost = 0;
             if (msg.advanced) streakEvent = { days: myStreak, froze: Boolean(msg.froze) };
             renderStreak();
@@ -1759,9 +1762,9 @@ function renderStreak() {
     // itself — vanishing would read as the count being lost. Only the offer
     // behind it has a minimum, so a one-day streak still shows 1 and simply has
     // nothing to tap.
-    const days = myStreak > 0 ? myStreak : myStreakLost;
+    const days = myStreak > 0 ? myStreak : myStreakBroken;
     pill.hidden = days < 1;
-    pill.classList.toggle('broken', myStreak < 1 && restorable() > 0);
+    pill.classList.toggle('broken', myStreak < 1 && days > 0);
     if (days < 1) return;
     $('streak-count').textContent = days;
     const lit = myStreak > 0 && myStreakState === 'today';
@@ -1778,7 +1781,7 @@ function restorable() {
 // Before this the rules only surfaced once a streak had already broken, so the
 // players actually keeping one — the ones the flame is for — never saw them.
 function streakShownDays() {
-    return Math.max(1, myStreak > 0 ? myStreak : myStreakLost);
+    return Math.max(1, myStreak > 0 ? myStreak : myStreakBroken);
 }
 
 // The ladder of tiers, with the one currently in force marked. Built on every
@@ -1804,10 +1807,10 @@ function renderFlameLadder() {
 
 function openStreakInfo() {
     const days = streakShownDays();
-    const broken = myStreak < 1 && myStreakLost > 0;
+    const broken = myStreak < 1 && myStreakBroken > 0;
     const lit = myStreak > 0 && myStreakState === 'today';
     $('info-flame').className = 'flame ' + flameClass(days) + (lit ? '' : ' unlit') + ' cel-flame';
-    $('info-title').textContent = broken ? daysPhrase(myStreakLost, 'streak_lost')
+    $('info-title').textContent = broken ? daysPhrase(myStreakBroken, 'streak_lost')
         : myStreak > 0 ? daysPhrase(myStreak) : t('streak_none');
     $('info-sub').textContent = broken ? t('streak_lost_sub')
         : myStreak > 0 ? (lit ? t('streak_keep') : t('streak_today')) : '';
@@ -1859,9 +1862,13 @@ function renderStreakCard() {
     restore.hidden = !restorable();
     if (restorable()) restore.textContent = daysPhrase(myStreakLost, 'streak_restore');
 
-    if (restorable() && myStreak < 1) {
-        flame.className = 'flame ' + flameClass(myStreakLost) + ' unlit';
-        $('streak-days').textContent = daysPhrase(myStreakLost, 'streak_lost');
+    /* Not gated on restorable(): a break too short to sell back is still a
+       break, and the card should say so rather than silently showing "no
+       streak yet" to somebody who had one yesterday. The offer above appears
+       separately, or not at all. */
+    if (myStreak < 1 && myStreakBroken > 0) {
+        flame.className = 'flame ' + flameClass(myStreakBroken) + ' unlit';
+        $('streak-days').textContent = daysPhrase(myStreakBroken, 'streak_lost');
         sub.textContent = t('streak_lost_sub');
         $('streak-card').classList.add('cold');
         return;
@@ -1932,6 +1939,7 @@ async function claimStreak() {
         myStreak = data.streak || myStreakLost;
         myStreakState = 'today';     // the day is closed; playing is optional now
         myStreakToday = true;
+        myStreakBroken = 0;
         myStreakLost = 0;
         myStreakFree = false;
         closeAdOverlay();
@@ -2158,6 +2166,7 @@ async function afterLogin() {
     myStreakBest = data.streakBest || 0;
     myStreakToday = Boolean(data.streakToday);
     myStreakState = data.streakState || 'none';
+    myStreakBroken = data.streakBroken || 0;
     myStreakLost = data.streakLost || 0;
     myStreakFree = Boolean(data.streakFree);
 

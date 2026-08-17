@@ -45,7 +45,9 @@ async function load(owner) {
   return row;
 }
 
-function view(row, tzOffsetMin) {
+// Exported for the tests. Everything interesting about a streak is decided
+// here, from a row and a clock, with no database in the way.
+export function view(row, tzOffsetMin) {
   const today = localDay(tzOffsetMin);
   const last = row.last_day ? new Date(row.last_day).toISOString().slice(0, 10) : null;
   const gap = last ? daysBetween(last, today) : null;
@@ -73,6 +75,13 @@ function view(row, tzOffsetMin) {
     streakBest: row.best,
     streakToday: state === 'today',
     streakState: state,
+    /* What just broke, whatever its size — separate from what is worth selling
+       back. The client used to read the offer below for both, so a two-day
+       streak breaking made the flame vanish from the home screen with no word
+       of explanation, which is precisely the "the count has been lost" reading
+       the flame is supposed to prevent. A streak too short to buy back should
+       still be visible; it just has nothing to tap. */
+    streakBroken: state === 'lost' ? lost : 0,
     // only offered when it is both recent enough and big enough to matter
     streakLost: (state === 'lost' && lost >= MIN_RESTORE_DAYS
       && gap <= RESTORE_WINDOW_DAYS + 1) ? lost : 0,

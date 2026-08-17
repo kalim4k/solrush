@@ -515,7 +515,7 @@ wss.on('connection', (ws) => {
       hub.attach(client);
 
       const owner = client.userId ? { userId: client.userId } : { deviceId: client.deviceId };
-      let streak = { streak: 0, streakBest: 0, streakToday: false, streakState: 'none', streakLost: 0, streakFree: true };
+      let streak = { streak: 0, streakBest: 0, streakToday: false, streakState: 'none', streakBroken: 0, streakLost: 0, streakFree: true };
       if (owner.userId || owner.deviceId) {
         streak = await getStreak(owner, client.tz).catch(() => streak);
       }
