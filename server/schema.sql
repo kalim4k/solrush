@@ -27,6 +27,15 @@ CREATE TABLE IF NOT EXISTS users (
 -- they are already in place.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS plus boolean NOT NULL DEFAULT false;
 
+-- Cosmetics belong on the row, not just on the socket. They started life as
+-- something sent at hello and held in memory, which meant a badge existed only
+-- while its owner was connected — so the leaderboard, which is a list of people
+-- who are mostly offline, could never show one. Storing them also means a
+-- player who logs in on a new phone arrives wearing what they paid for.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS skin  text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS badge text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pixel text;
+
 -- The leaderboard reads points DESC and nothing else; without this it is a
 -- full scan on every open of the tab.
 CREATE INDEX IF NOT EXISTS users_points_idx ON users (points DESC, wins DESC);

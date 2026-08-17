@@ -91,6 +91,20 @@ try {
     await sleep(250);
   }
 
+  /* The cheap sentinel for an expensive bug, and it needs no login.
+
+     hello_ok used to answer a GUEST with the default skin and badge, and the
+     client wrote whatever came back into localStorage so that a second device
+     would inherit what an account owns. But the first hello of every session
+     is a guest one, fired before the login form is even filled in — so the
+     browser learned that "classic/none" was a deliberate choice, sent it as
+     one on the next hello, and overwrote the gold pawn the account had paid
+     for. The account lost its cosmetics by the simple act of opening the game.
+
+     A guest has nothing to inherit, so nothing should be stored for one. */
+  step(await ev(`localStorage.getItem('wr_skin') === null && localStorage.getItem('wr_badge') === null`),
+    'a guest hello stores no choice on the browser');
+
   const skins = await ev(`document.querySelectorAll('#skin-grid .cos-swatch').length`);
   const badges = await ev(`document.querySelectorAll('#badge-grid .cos-swatch').length`);
   step(skins === 9, `nine pawn skins drawn (saw ${skins})`);

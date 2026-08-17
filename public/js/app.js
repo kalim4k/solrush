@@ -278,10 +278,14 @@ function helloMsg(jwt) {
         token: wsToken,
         device: deviceId,
         tz: new Date().getTimezoneOffset(),
-        skin: mySkin,
-        badge: myBadge,
-        // Only sent when it is the chosen skin: a couple of hundred bytes is
-        // nothing, but it has no business riding on every reconnect otherwise.
+        /* Blank when this browser has never chosen, so the server can tell
+           "I want the default" apart from "I have no opinion". Logging in on a
+           second phone is the second case, and it should arrive wearing what
+           the account already owns rather than resetting it. */
+        skin: localStorage.getItem('wr_skin') || '',
+        badge: localStorage.getItem('wr_badge') || '',
+        // Only with the skin that uses it: 2.4 KB has no business riding on
+        // every reconnect otherwise.
         pixel: mySkin === 'pixel' ? myPixel : '',
         jwt,
     };
@@ -534,9 +538,16 @@ function handleWsMessage(msg) {
                sees the same pawn everybody else sees, instead of admiring a
                gold piece that exists only on their screen. */
             myPlus = Boolean(msg.plus);
-            if (msg.skin) mySkin = msg.skin;
-            if (msg.badge) myBadge = msg.badge;
+            /* Written through to storage, not just held in memory: this is how
+               a second device ends up wearing what the account owns, and it has
+               to survive the next reload without a server round trip — the
+               picker is on the profile screen, which opens long before the
+               socket does on a slow connection. */
+            if (msg.skin) { mySkin = msg.skin; localStorage.setItem('wr_skin', mySkin); }
+            if (msg.badge) { myBadge = msg.badge; localStorage.setItem('wr_badge', myBadge); }
+            if (msg.pixel) { myPixel = msg.pixel; localStorage.setItem('wr_pixel', myPixel); }
             renderCosmetics();
+            updateProfileUI();
             myStreak = msg.streak || 0;
             myStreakBest = msg.streakBest || 0;
             myStreakToday = Boolean(msg.streakToday);
@@ -987,6 +998,23 @@ function buildBoard() {
 
 const BADGE_GLYPH = { none: '', flame: '🔥', crown: '👑', star: '⭐', bolt: '⚡', skull: '💀' };
 
+/* Same idea as paintPawn, for the small ball in the player pill. Kept separate
+   because the ball holds a rank icon inside it and must not lose the class the
+   rank styling hangs off. */
+function paintChipBall(el, skin, pixel, seat) {
+    if (!el) return;
+    const usePixel = skin === 'pixel' && isPixelData(pixel);
+    const cls = ['chip-ball', seat];
+    if (usePixel) cls.push('skin-pixel');
+    else if (skin && skin !== DEFAULT_SKIN && skin !== 'pixel') cls.push('skin-' + skin);
+    el.className = cls.join(' ');
+    // Clear the shorthand first: applyChipBallColors() writes an inline
+    // `background` for unskinned balls, and that shorthand would otherwise sit
+    // on top of the photo set on the next line.
+    el.style.background = '';
+    el.style.backgroundImage = usePixel ? pixelURL(pixel) : '';
+}
+
 /* A nickname with its owner's badge in front. Built from nodes rather than a
    template string: the nickname is chosen by another player and arrives over
    the socket, so it goes in as text and never as markup. */
@@ -1098,7 +1126,7 @@ function renderGame() {
     }
 
     // HUD — rank icons only during play; the number belongs on the result screen
-    $('me-nick').textContent = myNick();
+    setNickWithBadge($('me-nick'), myNick(), resolveBadge(myBadge, myPlus));
     setNickWithBadge($('opp-nick'), game.oppNick, game.oppBadge);
     const online = game.mode === 'online';
     $('me-rank').textContent = online ? rankIcon(myPoints) : '';
@@ -1112,8 +1140,14 @@ function renderGame() {
     $('chip-me').className = 'p-pill ' + myColor() + (myTurn ? ' turn-active' : '');
     $('chip-opp').className = 'p-pill ' + oppColor() +
         (!myTurn && s.winner === null && !game.over ? ' turn-active' : '');
-    $('chip-me').querySelector('.chip-ball').className = 'chip-ball ' + myColor();
-    $('chip-opp').querySelector('.chip-ball').className = 'chip-ball ' + oppColor();
+    /* The ball beside each name wears the same skin as that player's pawn.
+       Without this the board showed a photograph while the pill two inches
+       above it showed a plain coloured bead for the same person, which reads
+       as a bug rather than as a design. */
+    paintChipBall($('chip-me').querySelector('.chip-ball'),
+        resolveSkin(mySkin, myPlus), myPixel, myColor());
+    paintChipBall($('chip-opp').querySelector('.chip-ball'),
+        game.oppSkin, game.oppPixel, oppColor());
     applyChipBallColors();
     $('turn-banner').textContent = myTurn ? t('your_turn') : t('opp_turn');
     const bandTop = board.querySelector('.zone-band.top');
@@ -1142,6 +1176,10 @@ function oppColor() { return game.myIndex === 0 ? 'red' : 'blue'; }
 
 function applyChipBallColors() {
     document.querySelectorAll('.chip-ball').forEach(el => {
+        /* A skinned ball paints itself from a class, and an inline background
+           beats any class there is — so writing the seat colour here would
+           silently undo every skin. Leave those alone. */
+        if ([...el.classList].some(c => c.startsWith('skin-'))) return;
         const isRed = el.classList.contains('red');
         el.style.background = isRed
             ? 'radial-gradient(circle at 32% 26%, #ffb9c0, #e33d52 62%, #a91f33)'
@@ -1808,7 +1846,9 @@ function renderLeaderboard(rows, savedAt) {
             el.querySelector('.r-avatar').textContent = (row.nick || '?')[0].toUpperCase();
             el.querySelector('.lb-nick').innerHTML =
                 `<span class="lb-name"></span><small class="lb-badge"></small>`;
-            el.querySelector('.lb-name').textContent = row.nick;
+            // The badge rides with the name, so it is on show to everyone who
+            // opens the table — not only to whoever this player is beating.
+            setNickWithBadge(el.querySelector('.lb-name'), row.nick, row.badge || DEFAULT_BADGE);
             el.querySelector('.lb-badge').textContent = rankChip(pts);
             el.querySelector('.lb-score b').textContent = pts.toLocaleString();
             el.querySelector('.lb-score small').textContent =
@@ -1821,8 +1861,18 @@ function renderLeaderboard(rows, savedAt) {
 /* ================= profile & auth ================= */
 function updateProfileUI() {
     const nick = myNick();
-    $('profile-nick').textContent = nick;
-    $('profile-avatar').textContent = nick[0].toUpperCase();
+    setNickWithBadge($('profile-nick'), nick, resolveBadge(myBadge, myPlus));
+    /* The avatar shows the pawn the player chose, so the profile answers "what
+       do I look like to everybody else" in one glance — which is the question
+       the whole appearance box exists to answer. It falls back to the initial
+       when the classic pawn is in use, since that has no colour of its own
+       until a seat is assigned. */
+    const skin = resolveSkin(mySkin, myPlus);
+    const av = $('profile-avatar');
+    const usePixel = skin === 'pixel' && isPixelData(myPixel);
+    av.className = 'avatar' + (skin !== DEFAULT_SKIN && !usePixel ? ' skin-' + skin : '');
+    av.style.backgroundImage = usePixel ? pixelURL(myPixel) : '';
+    av.textContent = (skin === DEFAULT_SKIN && !usePixel) ? nick[0].toUpperCase() : '';
     renderRankCard();
     const wins = profile?.wins || 0, losses = profile?.losses || 0;
     $('stat-games').textContent = wins + losses;
@@ -1871,6 +1921,10 @@ function cosSave() {
        to forget when a skin is added. */
     wsSend(helloMsg(session?.access_token));
     renderCosmetics();
+    // The profile is the screen the picker sits on: the avatar and the badge
+    // beside the nickname have to move with the choice, or the player has to
+    // leave and come back to find out what they picked.
+    updateProfileUI();
     if (game) renderGame();
 }
 
@@ -1943,22 +1997,24 @@ async function encodePixel(file) {
         px.push([data[i * 4], data[i * 4 + 1], data[i * 4 + 2]]);
     }
 
-    /* Coarse buckets before counting, so a hundred nearly identical browns
-       count as one colour. Without this the twelve slots all go to shades of
-       the same cheek and the picture comes out flat. */
+    /* Buckets before counting, so a thousand nearly identical browns compete
+       for one slot instead of sixteen. Four bits a channel rather than three:
+       at 48x48 the coarser grid was throwing away the difference between a
+       cheek and the shadow under it, which is most of what makes a face a
+       face. Then the most-used buckets win the palette. */
     const counts = new Map();
     for (const [r, g, b] of px) {
-        const key = ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5);
+        const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
         counts.set(key, (counts.get(key) || 0) + 1);
     }
     const palette = [...counts.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, PIXEL_COLOURS)
-        .map(([k]) => [((k >> 6) & 7) * 36, ((k >> 3) & 7) * 36, (k & 7) * 36]);
+        .map(([k]) => [((k >> 8) & 15) * 17, ((k >> 4) & 15) * 17, (k & 15) * 17]);
     while (palette.length < PIXEL_COLOURS) palette.push([136, 136, 136]);
 
     const nib = (v) => Math.max(0, Math.min(15, Math.round(v / 17))).toString(16);
-    const digits = '0123456789ab';
+    const digits = '0123456789abcdef';
     let out = 'P' + palette.map(([r, g, b]) => nib(r) + nib(g) + nib(b)).join('');
     for (const [r, g, b] of px) {
         let best = 0, bd = Infinity;

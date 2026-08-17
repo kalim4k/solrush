@@ -66,21 +66,29 @@ export function resolveBadge(id, plus = false) {
 }
 
 /* The pixel pawn is a photo the player chose, reduced in their own browser to a
-   12x12 grid of palette indices and sent as text. Two reasons it is shaped this
-   way rather than as an uploaded image:
+   grid of palette indices and sent as text — never uploaded. Nothing to host,
+   nothing to cache, and no photographs of faces sitting on the server.
 
-   nothing to host   — 12x12 indices plus a small palette is a couple of hundred
-                       bytes, so it rides along in the same message as the nick
-                       instead of needing storage, a CDN and a cache
-   nothing to police — a face at 12x12 is unrecognisable, and so is everything
-                       else. The resolution IS the moderation; there is no
-                       practical way to smuggle a legible offensive image
-                       through a grid this coarse.
+   It started at 12x12, chosen so that nothing recognisable could survive: the
+   resolution was meant to be the moderation. That was the wrong trade. Nobody
+   could recognise THEMSELVES either, and a pawn you cannot be recognised in is
+   worthless for the one thing it is for — being seen wearing it. A cosmetic
+   that fails to identify its owner is not a cosmetic.
 
-   Format: "P" + 12 colours as 3-digit hex + 144 characters indexing them. */
-export const PIXEL_SIDE = 12;
-export const PIXEL_COLOURS = 12;
-const PIXEL_RE = /^P([0-9a-f]{3}){12}[0-9ab]{144}$/;
+   So 48x48 with sixteen colours: about 2.4 KB of text, sent once when the
+   socket opens rather than per move, and a face that reads as that face at the
+   size a pawn is actually drawn.
+
+   What that costs: an offensive picture is now legible too. The mitigation is
+   not resolution any more, it is accountability — custom pawns are a Plus
+   feature, so every one of them belongs to a paying account with an email
+   behind it, which is a far better position to act from than an anonymous
+   upload would have been.
+
+   Format: "P" + 16 colours as 3-digit hex + 2304 characters indexing them. */
+export const PIXEL_SIDE = 48;
+export const PIXEL_COLOURS = 16;
+const PIXEL_RE = /^P([0-9a-f]{3}){16}[0-9a-f]{2304}$/;
 
 export function isPixelData(s) {
   return typeof s === 'string' && PIXEL_RE.test(s);

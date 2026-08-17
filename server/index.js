@@ -295,7 +295,9 @@ async function api(req, res, path) {
 
     case '/api/leaderboard': {
       const rows = await q(
-        `SELECT nick, points, wins, losses, veteran
+        // badge, because a badge nobody but the wearer's opponent ever sees is
+        // half a purchase. The leaderboard is where the rest of the game looks.
+        `SELECT nick, points, wins, losses, veteran, badge
            FROM users WHERE wins + losses > 0
           ORDER BY points DESC, wins DESC LIMIT 100`,
       );
@@ -510,9 +512,11 @@ wss.on('connection', (ws) => {
       client.tz = Number(msg.tz) || 0;
 
       const payload = msg.jwt ? readToken(msg.jwt) : null;
+      let stored = null;              // what the account already wears, if any
       if (payload) {
         const user = await userById(payload.sub).catch(() => null);
         if (user) {
+          stored = user;
           client.userId = user.id;
           client.nick = user.nick;
           client.points = user.points;
@@ -532,10 +536,29 @@ wss.on('connection', (ws) => {
          back and their opponent's board never shows it. The pixel pawn is held
          to a fixed-length format, so a malformed one costs its owner the skin
          and cannot become a payload. */
-      client.skin = resolveSkin(msg.skin, client.plus);
-      client.badge = resolveBadge(msg.badge, client.plus);
-      client.pixel = (client.skin === 'pixel' && isPixelData(msg.pixel)) ? msg.pixel : '';
-      if (client.skin === 'pixel' && !client.pixel) client.skin = 'classic';
+      /* An empty field means "I have no choice of my own" — a browser that has
+         never picked one, which is what a player logging in on a second phone
+         looks like. Those inherit what the account is already wearing instead
+         of quietly overwriting it with the defaults. */
+      const wants = {
+        skin: msg.skin || stored?.skin || DEFAULT_SKIN,
+        badge: msg.badge || stored?.badge || DEFAULT_BADGE,
+        pixel: msg.pixel || stored?.pixel || '',
+      };
+      client.skin = resolveSkin(wants.skin, client.plus);
+      client.badge = resolveBadge(wants.badge, client.plus);
+      client.pixel = (client.skin === 'pixel' && isPixelData(wants.pixel)) ? wants.pixel : '';
+      if (client.skin === 'pixel' && !client.pixel) client.skin = DEFAULT_SKIN;
+
+      /* Persisted so the leaderboard can show a badge belonging to somebody who
+         is not connected — which is nearly everybody on it. Fire and forget:
+         a failed write costs the player nothing this session, and blocking the
+         hello on it would delay the whole game for a cosmetic. */
+      if (client.userId) {
+        q('UPDATE users SET skin = $2, badge = $3, pixel = $4 WHERE id = $1',
+          [client.userId, client.skin, client.badge, client.pixel || null])
+          .catch((e) => console.error('cosmetics not saved:', e.message));
+      }
 
       hub.attach(client);
 
@@ -555,8 +578,29 @@ wss.on('connection', (ws) => {
         // rest. Advisory only — the board is painted from what the server
         // resolved above, not from this.
         plus: client.plus,
-        skin: client.skin,
-        badge: client.badge,
+        /* Only for an account, and this condition is load-bearing.
+
+           The client writes whatever comes back here into localStorage, so that
+           a second device ends up wearing what was bought. But the FIRST hello
+           of any session is a guest one — it happens before the login form has
+           even been filled in — and answering that with the defaults taught the
+           browser that "classic/none" was its choice. The very next hello then
+           sent those as a deliberate selection and overwrote the gold pawn the
+           account actually owned.
+
+           A guest has nothing stored to inherit, so saying nothing is both
+           correct and the fix: absent fields leave the client's own choice
+           alone.
+
+           The photo travels too. Without it a player logging in elsewhere
+           inherits the skin "pixel" with no picture to put in it and silently
+           falls back to a plain bead — the one skin that fails to travel.
+           2.4 KB once per connection, not per move. */
+        ...(client.userId ? {
+          skin: client.skin,
+          badge: client.badge,
+          pixel: client.pixel || '',
+        } : {}),
         ...streak,
       });
 

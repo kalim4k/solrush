@@ -1430,6 +1430,16 @@ html[data-theme="dark"] .legal-links span {
     vertical-align: -.05em;
 }
 
+/* The profile avatar doubles as a preview of the pawn, so it has to accept a
+   skin gradient and a photo the same way a pawn does. */
+.avatar[class*="skin-"],
+.avatar[style*="background-image"] {
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+    color: transparent;
+}
+
 /* The classic pawn keeps its seat colour, so its swatch has to show both —
    this rule is only ever used by the picker, never by a pawn. */
 .skin-classic {
