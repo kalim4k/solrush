@@ -171,6 +171,23 @@ try {
     `every pack synthesises a move and a wall${audio?.error ? ': ' + audio.error : ''}`);
   step(audio?.skipped === true || audio?.tints === 5, 'each pack has a wall tint to flash');
 
+  /* Victory signatures. Whether the winner's actually plays on the loser's
+     screen needs two accounts and a finished game, so that lives in
+     scripts/finish-check.mjs. What belongs here is the picker: five drawn, four
+     locked, and — the part that is easy to lose — a locked one still PLAYING
+     before it refuses. This is the one cosmetic nobody will buy unseen. */
+  const fins = await ev(`document.querySelectorAll('#finish-grid .cos-swatch').length`);
+  step(fins === 5, `five victory signatures drawn (saw ${fins})`);
+  step(await ev(`document.querySelectorAll('#finish-grid .cos-swatch.locked').length === 4`),
+    'four signatures locked for a player without Plus');
+
+  await ev(`document.querySelector('#finish-grid .cos-swatch.locked').click()`);
+  await sleep(150);
+  step(await ev(`document.querySelector('.cosmetics-box > .finish')?.children.length > 0`),
+    'a locked signature still plays in the picker before it refuses');
+  step(await ev(`['plain', null].includes(localStorage.getItem('wr_finish'))`),
+    'clicking a locked signature does not become the choice');
+
   step(errors.length === 0, `no console errors${errors.length ? ': ' + errors.slice(0, 3).join(' / ') : ''}`);
 } catch (e) {
   console.error('cosmetics check failed:', e.message);

@@ -137,6 +137,8 @@ export default {
   pixel_hint: 'Fotoğrafın bu cihazdan çıkmaz — burada küçültülür ve küçük bir görsel olarak gönderilir.',
   packs_title: 'Ses paketi',
   packs_hint: 'Sen oynadığında paketin rakibinin ekranında da çalar. Dinlemek için birine dokun.',
+  finish_title: 'Zafer imzası',
+  finish_hint: 'Kazandığında rakibinin ekranında da oynar. Görmek için birine dokun.',
   plus_locked: 'Yalnızca SolRush Plus',
 
   /* ---- rütbeler ---- */

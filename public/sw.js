@@ -4,7 +4,7 @@
 // Bump CACHE whenever the shell changes. The old cache is deleted on activate,
 // so a stale engine.js can never be paired with a fresh app.js — which is the
 // failure mode that produces bug reports nobody can reproduce.
-const CACHE = 'solrush-v11';
+const CACHE = 'solrush-v12';
 
 const SHELL = [
   '/',
@@ -22,6 +22,7 @@ const SHELL = [
   '/js/voice.js',
   '/js/cosmetics.js',
   '/js/packs.js',
+  '/js/finish.js',
   // All six packs. Together they are smaller than one photograph, and without
   // them the game opens offline in English regardless of what the player chose.
   '/lang/en.js',

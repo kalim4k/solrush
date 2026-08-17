@@ -136,6 +136,8 @@ export default {
   pixel_hint: 'Ta photo ne quitte pas cet appareil — elle est réduite ici et envoyée comme une petite image.',
   packs_title: 'Pack sonore',
   packs_hint: 'Ton pack se joue aussi chez ton adversaire, quand tu joues. Touche-en un pour l’entendre.',
+  finish_title: 'Signature de victoire',
+  finish_hint: 'Elle se joue chez ton adversaire quand tu gagnes. Touche-en une pour la voir.',
   plus_locked: 'Réservé à SolRush Plus',
 
   /* ---- rangs ---- */

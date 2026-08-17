@@ -190,6 +190,8 @@ class Room {
         opp: {
           nick: opp.nick, points: opp.points,
           skin: opp.skin, badge: opp.badge, pixel: opp.pixel, pack: opp.pack,
+          // theirs is what plays on THIS player screen when they lose
+          finish: opp.finish,
         },
       });
     }

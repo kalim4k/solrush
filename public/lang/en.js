@@ -135,6 +135,8 @@ export default {
   pixel_hint: 'Your photo never leaves this device — it is shrunk here and sent as a small image.',
   packs_title: 'Sound pack',
   packs_hint: 'Your pack plays on your opponent’s screen too, when you move. Tap one to hear it.',
+  finish_title: 'Victory signature',
+  finish_hint: 'It plays on your opponent’s screen when you win. Tap one to see it.',
   plus_locked: 'SolRush Plus only',
 
   /* ---- ranks ---- */

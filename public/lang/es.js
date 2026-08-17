@@ -134,6 +134,8 @@ export default {
   pixel_hint: 'Tu foto no sale de este dispositivo: se reduce aquí y se envía como una imagen pequeña.',
   packs_title: 'Pack de sonido',
   packs_hint: 'Tu pack suena también en la pantalla de tu rival cuando mueves. Toca uno para oírlo.',
+  finish_title: 'Firma de victoria',
+  finish_hint: 'Se reproduce en la pantalla de tu rival cuando ganas. Toca una para verla.',
   plus_locked: 'Solo con SolRush Plus',
 
   /* ---- rangos ---- */

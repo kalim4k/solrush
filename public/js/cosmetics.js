@@ -57,13 +57,36 @@ export const PACKS = [
   { id: 'drum', free: false },   // djembé and dundun — the one nobody else has
 ];
 
+/* Victory signatures. What the board does in the second after you win — and it
+   plays on the LOSER's screen, which is the entire product.
+
+   Every other cosmetic here is passive: the opponent sees your pawn if they
+   happen to look at it. This one takes the screen, once, at the only moment in
+   a match when both players are certainly watching the same thing. It is the
+   closest a board game gets to a goal celebration, and it is the reason the
+   pawn skin gets bought too — the pawn is what people recognise afterwards.
+
+   'plain' is free and is what the game does today: the result screen, straight
+   away. Nobody is made to sit through anything to reach their own result — the
+   animation is skippable with a tap, and it is capped well under two seconds.
+   A celebration you cannot dismiss stops being a flex and becomes a grudge. */
+export const FINISHES = [
+  { id: 'plain', free: true },
+  { id: 'flare', free: false },   // a shockwave out of the winning square
+  { id: 'quake', free: false },   // the board takes the hit
+  { id: 'storm', free: false },   // a downpour in the winner's colour
+  { id: 'stamp', free: false },   // their badge slammed onto the board
+];
+
 export const DEFAULT_SKIN = 'classic';
 export const DEFAULT_BADGE = 'none';
 export const DEFAULT_PACK = 'wood';
+export const DEFAULT_FINISH = 'plain';
 
 const skinById = new Map(SKINS.map((s) => [s.id, s]));
 const badgeById = new Map(BADGES.map((b) => [b.id, b]));
 const packById = new Map(PACKS.map((p) => [p.id, p]));
+const finishById = new Map(FINISHES.map((f) => [f.id, f]));
 
 export const isFreeSkin = (id) => Boolean(skinById.get(id)?.free);
 export const isFreeBadge = (id) => Boolean(badgeById.get(id)?.free);
@@ -92,6 +115,12 @@ export function resolvePack(id, plus = false) {
   const p = packById.get(id);
   if (!p) return DEFAULT_PACK;
   return (p.free || plus) ? p.id : DEFAULT_PACK;
+}
+
+export function resolveFinish(id, plus = false) {
+  const f = finishById.get(id);
+  if (!f) return DEFAULT_FINISH;
+  return (f.free || plus) ? f.id : DEFAULT_FINISH;
 }
 
 /* The photo pawn is a picture the player chose, shrunk in their own browser and

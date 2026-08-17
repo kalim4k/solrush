@@ -151,6 +151,45 @@ export const PACK_BUZZ = {
   drum: [14, 30, 18],
 };
 
+/* The victory phrase — the one place these packs are allowed to be a tune.
+
+   It plays on both screens for the WINNER's pack, alongside their victory
+   signature, so the loser hears whose it is. That is the same rule as a move,
+   and it matters more here: this is the moment somebody decides they want one.
+
+   Three notes, half a second, still under the gain ceiling. A fanfare on a
+   phone speaker in a taxi is not a reward, it is a reason to mute the game —
+   and a muted game never sells a sound again. */
+const FANFARE = {
+  wood: { type: 'triangle', notes: [523, 659, 784], step: 0.11, decay: 0.3, peak: 0.24 },
+  neon: { type: 'square', notes: [587, 880, 1175], step: 0.09, decay: 0.26, peak: 0.14 },
+  fire: { type: 'sawtooth', notes: [392, 523, 659], step: 0.1, decay: 0.34, peak: 0.16 },
+  ice: { type: 'sine', notes: [784, 1047, 1568], step: 0.12, decay: 0.4, peak: 0.16 },
+  // Not a melody: a djembé figure. Three strikes closing on the low drum, which
+  // is what a win sounds like where this pack comes from.
+  drum: { drums: true },
+};
+
+export function playVictory(ctx, pack) {
+  const v = FANFARE[pack] || FANFARE[DEFAULT_PACK];
+  const t0 = ctx.currentTime;
+  try {
+    if (v.drums) {
+      for (const [i, at] of [0, 0.13, 0.26].entries()) {
+        hit(ctx, { freq: i === 2 ? 320 : 1600, q: 1.1, peak: 0.12, decay: 0.05, t0: t0 + at });
+        tone(ctx, {
+          from: i === 2 ? 130 : 400, to: i === 2 ? 55 : 250,
+          peak: i === 2 ? 0.34 : 0.18, decay: i === 2 ? 0.4 : 0.1, t0: t0 + at,
+        });
+      }
+      return;
+    }
+    v.notes.forEach((f, i) => tone(ctx, {
+      type: v.type, from: f, peak: v.peak, decay: v.decay, t0: t0 + i * v.step,
+    }));
+  } catch { /* a context that died under us is not worth a broken result screen */ }
+}
+
 export function playMove(ctx, pack, { wall = false, mine = true } = {}) {
   const voice = VOICES[pack] || VOICES[DEFAULT_PACK];
   const t0 = ctx.currentTime;

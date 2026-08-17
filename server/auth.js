@@ -66,7 +66,7 @@ export async function login(email, password) {
 
 export async function userById(id) {
   return one(
-    `SELECT id, email, nick, points, wins, losses, veteran, plus, skin, badge, pixel, pack
+    `SELECT id, email, nick, points, wins, losses, veteran, plus, skin, badge, pixel, pack, finish
        FROM users WHERE id = $1`,
     [id],
   );

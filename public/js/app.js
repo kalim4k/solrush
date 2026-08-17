@@ -1,10 +1,13 @@
 // SolRush client app: screens, board UI, online play (WebSocket), AI mode, auth.
 import { initialState, applyMove, pawnMoves, canPlaceWall, goalRow, cloneState, N } from './engine.js';
 import {
-    SKINS, BADGES, PACKS, DEFAULT_SKIN, DEFAULT_BADGE, DEFAULT_PACK,
-    resolveSkin, resolveBadge, resolvePack, isPhoto, PHOTO_SIDE, PHOTO_MAX_CHARS,
+    SKINS, BADGES, PACKS, FINISHES,
+    DEFAULT_SKIN, DEFAULT_BADGE, DEFAULT_PACK, DEFAULT_FINISH,
+    resolveSkin, resolveBadge, resolvePack, resolveFinish,
+    isPhoto, PHOTO_SIDE, PHOTO_MAX_CHARS,
 } from './cosmetics.js';
-import { playMove, PACK_TINT, PACK_BUZZ } from './packs.js';
+import { playMove, playVictory, PACK_TINT, PACK_BUZZ } from './packs.js';
+import { playFinish, clearFinish, FINISH_TINT, FINISH_GLYPH } from './finish.js';
 import { aiMove } from './ai.js';
 import { makeT, LANGS, LANG_CODES, RTL, loadLang } from './i18n.js';
 import { rankOf, nextRank } from './ranks.js';
@@ -86,6 +89,17 @@ function tick(mine, wall = false) {
         audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
         playMove(audioCtx, movingPack(mine), { wall, mine });
+    } catch { /* no audio — fine */ }
+}
+
+// The winner's pack says the last word. Same rule as a move — it is their
+// signature, so it plays on the loser's device too.
+function victorySound(pack) {
+    if (!soundOn || portalMute) return;
+    try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        playVictory(audioCtx, pack);
     } catch { /* no audio — fine */ }
 }
 
@@ -266,6 +280,7 @@ let mySkin = localStorage.getItem('wr_skin') || DEFAULT_SKIN;
 let myBadge = localStorage.getItem('wr_badge') || DEFAULT_BADGE;
 let myPixel = localStorage.getItem('wr_pixel') || '';
 let myPack = localStorage.getItem('wr_pack') || DEFAULT_PACK;
+let myFinish = localStorage.getItem('wr_finish') || DEFAULT_FINISH;
 
 /* Every hello carries the same thing, and there are three places that send one
    — first connect, after logging in, and after logging out. When cosmetics were
@@ -285,6 +300,7 @@ function helloMsg(jwt) {
         skin: localStorage.getItem('wr_skin') || '',
         badge: localStorage.getItem('wr_badge') || '',
         pack: localStorage.getItem('wr_pack') || '',
+        finish: localStorage.getItem('wr_finish') || '',
         // Only with the skin that uses it: 2.4 KB has no business riding on
         // every reconnect otherwise.
         pixel: mySkin === 'photo' ? myPixel : '',
@@ -548,6 +564,7 @@ function handleWsMessage(msg) {
             if (msg.badge) { myBadge = msg.badge; localStorage.setItem('wr_badge', myBadge); }
             if (msg.pixel) { myPixel = msg.pixel; localStorage.setItem('wr_pixel', myPixel); }
             if (msg.pack) { myPack = msg.pack; localStorage.setItem('wr_pack', myPack); }
+            if (msg.finish) { myFinish = msg.finish; localStorage.setItem('wr_finish', myFinish); }
             renderCosmetics();
             updateProfileUI();
             myStreak = msg.streak || 0;
@@ -958,6 +975,10 @@ function cellXY(r, c) {
 }
 
 function buildBoard() {
+    // A rematch started within a second of a win would otherwise open on a board
+    // with the last celebration still running over it. Every new game passes
+    // through here, which is why it is done here and not in three start paths.
+    clearFinish(board);
     const { cols, rows } = dims();
     // race board is taller than wide — cap width so the whole board fits on screen
     board.style.aspectRatio = `${cols * 1.3 + 0.3} / ${rows * 1.3 + 0.3}`;
@@ -1486,6 +1507,7 @@ function startOnlineGame(msg) {
         oppBadge: msg.opp?.badge || DEFAULT_BADGE,
         oppPixel: msg.opp?.pixel || '',
         oppPack: msg.opp?.pack || DEFAULT_PACK,
+        oppFinish: msg.opp?.finish || DEFAULT_FINISH,
         ranked: msg.ranked !== false,
         clocks: { ...msg.clocks, recvAt: Date.now() },
         over: false,
@@ -1532,7 +1554,7 @@ function onGameOver(iWon, reason) {
         goal: 'reason_goal', timeout: 'reason_timeout', move_timeout: 'reason_move_timeout',
         opponent_left: 'reason_opponent_left', resign: 'reason_resign',
     }[reason] || 'reason_goal';
-    setTimeout(() => {
+    const reveal = () => {
         $('result-emoji').textContent = iWon ? '🏆' : '😔';
         $('result-title').textContent = iWon ? t('game_win') : t('game_lose');
         $('result-reason').textContent = t(reasonKey);
@@ -1554,7 +1576,43 @@ function onGameOver(iWon, reason) {
         $('overlay-gameover').hidden = false;
         maybeAskPush();
         maybePortalAd();
-    }, 600);
+    };
+
+    /* The winner's victory signature, on both screens — theirs is what the
+       loser watches. This is the one moment in a match when both players are
+       certainly looking at the same thing, which is why it is the piece of the
+       Plus offer that sells the rest.
+
+       It delays the result screen by up to a second and a bit, and that cost is
+       paid by the person who just lost, so two things are non-negotiable: the
+       cap in FINISH_MS, and the tap-to-skip below. Anyone who does not want to
+       watch gets their result the instant they touch the screen. */
+    const fin = iWon ? resolveFinish(myFinish, myPlus) : (game.oppFinish || DEFAULT_FINISH);
+    const glyph = iWon
+        ? BADGE_GLYPH[resolveBadge(myBadge, myPlus)]
+        : BADGE_GLYPH[game.oppBadge || DEFAULT_BADGE];
+    /* Inside the board, not around it. The first version hung this on
+       .board-wrap — the whole flex column — and the storm rained down over the
+       player pills and the empty space beside them, which read as a rendering
+       fault rather than as weather. Clipped to the board, the same animation
+       reads as something happening ON the game. */
+    const anim = playFinish(board, fin, { glyph: glyph || '🏆' });
+    if (anim.ms) victorySound(movingPack(iWon));   // the winner's pack, same rule
+
+    let shown = false;
+    const finishNow = () => {
+        if (shown) return;
+        shown = true;
+        clearTimeout(timer);
+        document.removeEventListener('pointerdown', finishNow, true);
+        anim.stop();
+        reveal();
+    };
+    const timer = setTimeout(finishNow, Math.max(600, anim.ms));
+    // Capture phase: nothing under the finger during this second should be able
+    // to swallow the tap, and there is nothing left to click on the board anyway.
+    if (anim.ms) document.addEventListener('pointerdown', finishNow, true);
+
     vibrate(iWon ? [40, 60, 40, 60, 80] : 60);
 }
 
@@ -1930,6 +1988,7 @@ function cosSave() {
     localStorage.setItem('wr_skin', mySkin);
     localStorage.setItem('wr_badge', myBadge);
     localStorage.setItem('wr_pack', myPack);
+    localStorage.setItem('wr_finish', myFinish);
     if (myPixel) localStorage.setItem('wr_pixel', myPixel);
     /* Re-introduce ourselves rather than inventing a "cosmetics changed"
        message. hello already carries the whole identity and the server already
@@ -2010,9 +2069,39 @@ function renderCosmetics() {
         });
         packBox.appendChild(el);
     }
+
+    const finBox = $('finish-grid');
+    if (!finBox) return;
+    finBox.textContent = '';
+    for (const f of FINISHES) {
+        const locked = !f.free && !myPlus;
+        const el = cosSwatch(f.id, true, f.id === myFinish, locked);
+        el.textContent = FINISH_GLYPH[f.id] || '·';
+        // Ringed in the colour it actually plays in, so the picker does not
+        // reduce five different animations to five emoji.
+        el.style.boxShadow = 'inset 0 0 0 2px ' + (FINISH_TINT[f.id] || 'transparent');
+        el.addEventListener('click', () => {
+            // Same reasoning as the sound packs: show it, then refuse. This one
+            // is the whole reason to buy, and it costs nothing to demonstrate.
+            previewFinish(f.id);
+            if (locked) return toast(t('plus_locked'));
+            myFinish = f.id;
+            cosSave();
+        });
+        finBox.appendChild(el);
+    }
 }
 
 const PACK_GLYPH = { wood: '🪵', neon: '🎛️', fire: '🔥', ice: '❄️', drum: '🥁' };
+
+// Played inside the appearance box rather than over the whole screen: it has to
+// be obviously a preview, and the box is already the right shape for it.
+function previewFinish(id) {
+    const host = document.querySelector('.cosmetics-box');
+    if (!host) return;
+    playFinish(host, id, { glyph: BADGE_GLYPH[resolveBadge(myBadge, myPlus)] || '🏆' });
+    if (id !== DEFAULT_FINISH) victorySound(resolvePack(myPack, myPlus));
+}
 
 // A move and then a wall, spaced the way they fall in a real game.
 function previewPack(id) {

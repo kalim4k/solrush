@@ -1451,6 +1451,11 @@ html[data-theme="dark"] .legal-links span {
     box-shadow: var(--shadow);
     padding: 16px 18px;
     margin: 14px 0;
+    /* the victory-signature preview plays inside this box, so it has to be a
+       positioning context and it has to clip — otherwise the storm rains down
+       the entire profile screen */
+    position: relative;
+    overflow: hidden;
 }
 
 .cos-title {
@@ -1915,6 +1920,149 @@ a.btn-big {
 
     100% {
         transform: translateY(108vh) rotate(720deg);
+    }
+}
+
+/* ============ victory signatures ============
+
+   These run over the board in the second between the last move and the result
+   screen, on BOTH players' devices, and they belong to the winner.
+
+   Every keyframe below animates transform or opacity and nothing else. That is
+   a hard rule, not a preference: those two properties are handled on the
+   compositor, so the animation keeps its frame rate on a phone that is already
+   busy. Animating a filter, a shadow or a gradient here would repaint the whole
+   board every frame — and a celebration that stutters makes the game look
+   broken at the exact moment the player is deciding whether to pay for it.
+
+   --fin is set inline from FINISH_TINT in finish.js, so the colour in the
+   picker and the colour on the board come from one table. It is read, never
+   animated. */
+.finish {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    /* above the board, its walls and its pawns; below the result overlay */
+    z-index: 20;
+    border-radius: 14px;
+}
+
+.finish i,
+.finish span {
+    position: absolute;
+    display: block;
+}
+
+.fin-veil {
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, var(--fin), transparent 68%);
+    opacity: 0;
+    animation: finVeil .85s ease-out forwards;
+}
+
+@keyframes finVeil {
+    0% { opacity: 0; }
+    18% { opacity: .5; }
+    100% { opacity: 0; }
+}
+
+.fin-ring {
+    left: 50%;
+    top: 50%;
+    width: 40%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 3px solid var(--fin);
+    opacity: 0;
+    animation: finRing .8s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+
+@keyframes finRing {
+    0% { transform: translate(-50%, -50%) scale(.15); opacity: .95; }
+    100% { transform: translate(-50%, -50%) scale(2.6); opacity: 0; }
+}
+
+/* quake shakes the host — the board wrapper — rather than anything inside the
+   overlay, because the thing being hit is the board. Twice through, under a
+   second in total. */
+.fin-shaking {
+    animation: finShake .45s cubic-bezier(.36, .07, .19, .97) 2;
+}
+
+@keyframes finShake {
+    10%, 90% { transform: translate3d(-2px, 1px, 0); }
+    20%, 80% { transform: translate3d(4px, -2px, 0); }
+    30%, 50%, 70% { transform: translate3d(-7px, 2px, 0); }
+    40%, 60% { transform: translate3d(7px, -1px, 0); }
+}
+
+.fin-dust {
+    bottom: 8%;
+    width: 3px;
+    height: 22px;
+    border-radius: 2px;
+    background: var(--fin);
+    opacity: 0;
+    animation: finDust .7s ease-out forwards;
+}
+
+@keyframes finDust {
+    0% { transform: translate3d(0, 0, 0) scaleY(.3); opacity: .9; }
+    100% { transform: translate3d(var(--dx, 0), -70px, 0) scaleY(1.4); opacity: 0; }
+}
+
+.fin-drop {
+    top: -14%;
+    width: 2px;
+    height: 16%;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, transparent, var(--fin));
+    /* duration, delay and opacity are set per drop in JS */
+    animation-name: finDrop;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+@keyframes finDrop {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(760%); }
+}
+
+.fin-stamp {
+    left: 50%;
+    top: 50%;
+    font-size: clamp(56px, 30vw, 150px);
+    line-height: 1;
+    opacity: 0;
+    text-shadow: 0 6px 18px rgba(10, 20, 50, .35);
+    animation: finStamp 1s cubic-bezier(.2, .9, .25, 1) forwards;
+}
+
+@keyframes finStamp {
+    0% { transform: translate(-50%, -50%) scale(3.2) rotate(-16deg); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1) rotate(-8deg); opacity: 1; }
+    72% { transform: translate(-50%, -50%) scale(1) rotate(-8deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.1) rotate(-8deg); opacity: 0; }
+}
+
+/* Reduced motion: one veil, in and out. The setting is about movement, so the
+   moment is kept and the movement is dropped — rather than deleting a thing the
+   other player paid for because this player gets motion sick. */
+.fin-still .fin-veil {
+    animation: finStill .42s ease-in-out forwards;
+}
+
+@keyframes finStill {
+    0%, 100% { opacity: 0; }
+    40% { opacity: .5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    /* belt and braces: finish.js already takes the still path */
+    .fin-shaking {
+        animation: none;
     }
 }
 
