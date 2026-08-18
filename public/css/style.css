@@ -2834,13 +2834,24 @@ html[dir="rtl"] .wallet code {
     animation: voice-pulse 1.6s ease-in-out infinite;
 }
 
-.voice-btn.muted {
-    color: var(--text);
-    border-color: var(--line);
+/* Listening on is deliberately NOT the same red.
+
+   Red here means "you can be heard", which is the state with a consequence if
+   you get it wrong. Listening has no such cost, so it gets a calm blue: two
+   switches that both went red would make the dangerous one ordinary. */
+.voice-btn.on {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
 }
 
 .voice-btn.busy {
     opacity: .65;
+}
+
+.voice-btn:disabled {
+    opacity: .5;
+    cursor: default;
 }
 
 @keyframes voice-pulse {
@@ -2863,19 +2874,9 @@ html[dir="rtl"] .wallet code {
     }
 }
 
-.voice-leave {
-    border: 1px solid var(--line);
-    background: var(--card);
-    color: var(--muted);
-    font: inherit;
-    font-size: 13px;
-    line-height: 1;
-    width: 34px;
-    height: 34px;
-    border-radius: 11px;
-    cursor: pointer;
-    flex: none;
-}
+/* .voice-leave is gone with the button it styled. Leaving the call is now what
+   turning both switches off means, which is one fewer control and one fewer
+   thing to explain. */
 
 .voice-peer {
     font-size: 11.5px;

@@ -1806,45 +1806,64 @@ function setupVoice(msg) {
     $('voice-row').hidden = !allowed;
     if (!allowed) { voice?.stop(); return; }
     ensureVoice().setSide(msg.you);
-    renderVoice({ state: 'off', muted: true, peerIn: false, peerMuted: true });
+    renderVoice({ state: 'off', mic: false, speaker: false, error: '', peerIn: false, peerMic: false });
 }
 
 function renderVoice(v) {
-    const btn = $('btn-voice');
-    const label = $('voice-label');
-    const peer = $('voice-peer');
+    const micBtn = $('btn-mic');
+    const spkBtn = $('btn-speaker');
 
-    btn.classList.toggle('live', v.state === 'live' && !v.muted);
-    btn.classList.toggle('muted', v.state === 'live' && v.muted);
-    btn.classList.toggle('busy', v.state === 'asking' || v.state === 'connecting');
-    btn.disabled = v.state === 'asking' || v.state === 'unsupported';
-    $('btn-voice-leave').hidden = v.state === 'off' || v.state === 'unsupported';
+    /* Each switch shows its OWN state and nothing else. The old single button
+       had to encode the call, the permission and the microphone at once, which
+       is why it needed eight labels to say four things. */
+    micBtn.classList.toggle('live', v.mic);
+    micBtn.classList.toggle('busy', v.state === 'asking');
+    micBtn.disabled = v.state === 'asking' || v.error === 'unsupported';
+    micBtn.setAttribute('aria-pressed', String(v.mic));
 
-    label.textContent = {
-        off: t('voice_join'),
-        asking: t('voice_asking'),
-        waiting: t('voice_waiting'),
-        connecting: t('voice_connecting'),
-        denied: t('voice_denied'),
-        failed: t('voice_failed'),
-        unsupported: t('voice_unsupported'),
-        live: v.muted ? t('voice_muted') : t('voice_live'),
-    }[v.state] || '';
+    spkBtn.classList.toggle('on', v.speaker);
+    spkBtn.disabled = v.error === 'unsupported';
+    spkBtn.setAttribute('aria-pressed', String(v.speaker));
 
-    // What the other end is doing. Silence here is ambiguous — "is my friend
-    // not talking, or not in the call at all?" — so it is always stated.
-    peer.textContent = v.state === 'off' ? ''
-        : !v.peerIn ? t('voice_peer_out')
-            : v.peerMuted ? t('voice_peer_muted') : t('voice_peer_live');
+    /* One line for everything that is not a switch: why the microphone was
+       refused, where the call is, and what the friend is doing. Silence here is
+       ambiguous — "is my friend not talking, or not in the call at all?" — so
+       something is always said once either switch is on.
+
+       The error wins when there is one. A player who has just refused a
+       microphone prompt needs to be told that is what happened, not that the
+       call is connecting. */
+    const line =
+        v.error === 'unsupported' ? ['unsupported', t('voice_unsupported')]
+            : v.error === 'denied' ? ['denied', t('voice_denied')]
+                : v.error === 'nomic' ? ['nomic', t('voice_nomic')]
+                    : v.error === 'failed' ? ['failed', t('voice_failed')]
+                        : v.state === 'off' ? ['off', t('voice_hint')]
+                            : v.state === 'asking' ? ['asking', t('voice_asking')]
+                                : !v.peerIn ? ['out', t('voice_peer_out')]
+                                    : v.state !== 'live' ? ['connecting', t('voice_connecting')]
+                                        : v.peerMic ? ['live', t('voice_peer_live')]
+                                            : ['muted', t('voice_peer_muted')];
+
+    /* The state is written beside the words, because the words are whichever of
+       six languages the player's browser chose. The end-to-end check used to
+       compare this line against a snapshot of itself and call any change a
+       success — which passed while the line was still saying "Connecting…". */
+    const el = $('voice-peer');
+    el.dataset.peer = line[0];
+    el.textContent = line[1];
 }
 
-$('btn-voice').addEventListener('click', () => {
+// Independent switches, and each one is allowed to be the first thing tapped.
+$('btn-mic').addEventListener('click', () => {
     const v = ensureVoice();
-    if (v.state === 'live') v.toggleMute();
-    else v.join();
+    v.setMic(!v.mic);
 });
 
-$('btn-voice-leave').addEventListener('click', () => ensureVoice().leave());
+$('btn-speaker').addEventListener('click', () => {
+    const v = ensureVoice();
+    v.setSpeaker(!v.speaker);
+});
 
 /* ================= emoji ================= */
 let emojiTimer = null;

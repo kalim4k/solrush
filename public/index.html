@@ -113,7 +113,7 @@
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
         crossorigin="anonymous"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=138">
+    <link rel="stylesheet" href="css/style.css?v=140">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -402,19 +402,33 @@
 
             <!-- Voice, in friend rooms only. Hidden unless the server said this
                  room may carry it; see Room.relayVoice on the other side.
-                 The row is a single control plus a status line, because the
-                 state of a microphone is the one thing that must never be
-                 ambiguous. -->
+
+                 Two switches, not one sequence. This was a single button that
+                 meant "join", then "unmute", with a ✕ to leave — and joining
+                 asked for the microphone, so a player who only wanted to HEAR
+                 their friend had to grant the one permission they were trying
+                 to avoid. Speaking and listening are two different decisions
+                 and now they are two different switches.
+
+                 aria-pressed, not just colour: the state of a microphone is the
+                 one thing on this screen that must never be ambiguous, and
+                 colour alone says nothing to a screen reader. -->
             <div class="voice-row" id="voice-row" hidden>
-                <button class="voice-btn" id="btn-voice" aria-live="polite">
+                <button class="voice-btn" id="btn-mic" aria-pressed="false">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path
                             d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm7 9a7 7 0 0 1-6 6.93V22h-2v-3.07A7 7 0 0 1 5 12h2a5 5 0 0 0 10 0h2Z" />
                     </svg>
-                    <span id="voice-label"></span>
+                    <span data-i18n="voice_mic"></span>
                 </button>
-                <button class="voice-leave" id="btn-voice-leave" hidden aria-label="leave voice">✕</button>
-                <div class="voice-peer" id="voice-peer"></div>
+                <button class="voice-btn" id="btn-speaker" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2.5-4.03v8.06A4.5 4.5 0 0 0 16.5 12Zm-2.5-8.77v2.06A7 7 0 0 1 14 18.7v2.06a9 9 0 0 0 0-17.53Z" />
+                    </svg>
+                    <span data-i18n="voice_speaker"></span>
+                </button>
+                <div class="voice-peer" id="voice-peer" aria-live="polite"></div>
             </div>
 
             <!-- The remote audio. autoplay is fine because joining the call is
@@ -791,7 +805,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="js/app.js?v=138"></script>
+    <script type="module" src="js/app.js?v=140"></script>
 </body>
 
 </html>
