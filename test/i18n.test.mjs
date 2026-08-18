@@ -25,8 +25,19 @@ const ALL = [[EN, 'en'], ...PACKS];
 
 // Keys the markup asks for, via data-i18n / data-i18n-ph.
 const htmlKeys = [...html.matchAll(/data-i18n(?:-ph)?="([^"]+)"/g)].map(m => m[1]);
-// Keys the code asks for, via t('...').
-const codeKeys = [...app.matchAll(/\bt\('([a-z0-9_]+)'\)/g)].map(m => m[1]);
+/* Keys the code asks for. Two shapes, and the second one was added after the
+   first shipped a bug to the screen.
+
+   t('...') is the obvious one. But a key can also be handed to a helper that
+   calls t() for you — daysPhrase(n, key) is the one in this codebase — and a
+   pattern that only looks for t('key') is blind to it. The streak celebration
+   asked daysPhrase for "streak_milestone", a key that existed in no language
+   pack at all, and the overlay printed the key name at the player under a
+   large "3". Every check passed while it did. */
+const codeKeys = [
+  ...[...app.matchAll(/\bt\('([a-z0-9_]+)'\)/g)].map(m => m[1]),
+  ...[...app.matchAll(/\bdaysPhrase\([^,)]+,\s*'([a-z0-9_]+)'\)/g)].map(m => m[1]),
+];
 
 test('every key used in the markup exists in English', () => {
   const missing = [...new Set(htmlKeys)].filter(k => EN[k] === undefined);
@@ -36,6 +47,22 @@ test('every key used in the markup exists in English', () => {
 test('every key used in the code exists in English', () => {
   const missing = [...new Set(codeKeys)].filter(k => EN[k] === undefined);
   assert.deepEqual(missing, [], 'missing from en.js: ' + missing.join(', '));
+});
+
+/* A sentence with a hole in it cannot be hung on data-i18n.
+
+   That attribute is filled by one blanket pass that copies the translation into
+   the element. It knows nothing about %n or %r, so a string containing one is
+   rendered with the placeholder still in it — the celebration overlay showed
+   "%n jours d'affilée !" to a player on their third day.
+
+   Anything with a hole has to be built in JS, where the number is known. */
+test('no placeholder string is filled by the blanket data-i18n pass', () => {
+  const bad = [...new Set(htmlKeys)]
+    .filter(k => typeof EN[k] === 'string' && /%[a-z]/.test(EN[k]))
+    .map(k => `${k} = "${EN[k]}"`);
+  assert.deepEqual(bad, [],
+    'these carry a placeholder and must be set from code, not data-i18n:\n  ' + bad.join('\n  '));
 });
 
 /* The picker and the loader have to agree.

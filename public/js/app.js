@@ -2381,7 +2381,13 @@ function celebrateStreak(days) {
     celebratedDay = days;
     $('cel-flame').className = 'flame ' + flameClass(days) + ' cel-flame';
     $('cel-num').textContent = days;
-    $('cel-title').textContent = daysPhrase(days, 'streak_milestone');
+    /* The count, spelled out with its unit — and it has to be built here rather
+       than by the blanket data-i18n pass, because that pass copies a string
+       into an element and does not know what %n is. The title asked for a key
+       that existed in no language pack at all, so the screen showed the key
+       itself; the line under it asked for one that did exist and showed a raw
+       "%n". Two different ways of printing the plumbing at the player. */
+    $('cel-title').textContent = daysPhrase(days, 'streak_wow');
     // sparks are built fresh so they restart their drift every time
     const box = $('streak-sparks');
     box.innerHTML = '';

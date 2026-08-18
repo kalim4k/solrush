@@ -113,7 +113,7 @@
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
         crossorigin="anonymous"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=137">
+    <link rel="stylesheet" href="css/style.css?v=138">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -488,7 +488,10 @@
                 <span class="flame fl-1 cel-flame" id="cel-flame">🔥</span>
                 <div class="cel-num" id="cel-num">0</div>
                 <h2 class="cel-title" id="cel-title"></h2>
-                <p class="cel-sub" data-i18n="streak_wow"></p>
+                <!-- Carries no number, so the blanket data-i18n pass can fill
+                     it and it survives a language change. The count lives in
+                     the title above, which JS builds. -->
+                <p class="cel-sub" data-i18n="streak_keep"></p>
                 <button class="btn-big" id="cel-close" data-i18n="ok_word"></button>
             </div>
         </div>
@@ -788,7 +791,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="js/app.js?v=137"></script>
+    <script type="module" src="js/app.js?v=138"></script>
 </body>
 
 </html>
