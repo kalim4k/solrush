@@ -402,8 +402,11 @@ function applyI18n() {
     // The standalone rules document exists in two languages, not six. French
     // players get the French one; everyone else gets English, which is what the
     // page itself offers as x-default.
+    const fr = lang === 'fr';
     const rulesDoc = document.querySelector('.legal-links a[data-legal="rules"]');
-    if (rulesDoc) rulesDoc.href = lang === 'fr' ? '/regles/' : '/rules/';
+    if (rulesDoc) rulesDoc.href = fr ? '/regles/' : '/rules/';
+    const strat = $('link-strategy');
+    if (strat) strat.href = fr ? '/strategie/' : '/strategy/';
     document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
     const cur = LANGS.find(l => l.code === lang) || LANGS[0];
     $('btn-lang').textContent = cur.flag + ' ' + cur.code.toUpperCase();

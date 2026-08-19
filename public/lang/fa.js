@@ -237,6 +237,7 @@ export default {
 
   /* ---- حقوقی ---- */
   legal_rules: 'قواعد',
+  legal_strategy: 'راهبرد',
   legal_help: 'راهنما',
   legal_terms: 'شرایط',
   legal_privacy: 'حریم خصوصی',

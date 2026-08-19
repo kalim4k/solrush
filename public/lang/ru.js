@@ -237,6 +237,7 @@ export default {
 
   /* ---- правовое ---- */
   legal_rules: 'Правила',
+  legal_strategy: 'Стратегия',
   legal_help: 'Помощь',
   legal_terms: 'Условия',
   legal_privacy: 'Конфиденциальность',

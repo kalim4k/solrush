@@ -237,6 +237,7 @@ export default {
 
   /* ---- yasal ---- */
   legal_rules: 'Kurallar',
+  legal_strategy: 'Strateji',
   legal_help: 'Yardım',
   legal_terms: 'Koşullar',
   legal_privacy: 'Gizlilik',

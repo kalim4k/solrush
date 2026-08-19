@@ -139,7 +139,7 @@
          behind the WR_EMBED check below, because every portal that embeds this
          game forbids running our ads inside theirs. -->
 
-    <link rel="stylesheet" href="css/style.css?v=145">
+    <link rel="stylesheet" href="css/style.css?v=146">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -236,6 +236,14 @@
                          unreachable except through the sitemap. applyI18n swaps
                          it for /regles/ when the game is in French. -->
                     <a data-legal="rules" href="/rules/" data-i18n="legal_rules">Rules</a><span>·</span>
+                    <!-- No data-legal, and that is the point: there is no overlay
+                         for this one, so the click navigates. It is the only link
+                         on the home screen that leads to a document rather than
+                         to a dialog, which is what a crawler needs and what a
+                         player looking to get better actually wants. The label is
+                         translated into all six languages; the document exists in
+                         two, and offers the other one at the top. -->
+                    <a id="link-strategy" href="/strategy/" data-i18n="legal_strategy">Strategy</a><span>·</span>
                     <a data-legal="help" data-i18n="legal_help">Help</a><span>·</span>
                     <a data-legal="terms" data-i18n="legal_terms">Terms</a><span>·</span>
                     <a data-legal="privacy" data-i18n="legal_privacy">Privacy</a>
@@ -854,7 +862,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="js/app.js?v=145"></script>
+    <script type="module" src="js/app.js?v=146"></script>
 </body>
 
 </html>

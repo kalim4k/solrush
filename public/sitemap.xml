@@ -24,4 +24,18 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://solrush.site/strategy/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://solrush.site/strategy/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://solrush.site/strategie/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://solrush.site/strategie/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://solrush.site/strategy/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://solrush.site/strategie/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
 </urlset>

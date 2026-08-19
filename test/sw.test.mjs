@@ -10,7 +10,7 @@
 // the meantime.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -102,8 +102,28 @@ test('only the game shell is stored as the game shell', () => {
   const put = nav.slice(0, nav.indexOf('freshFirst'));
   assert.match(put, /if\s*\(\s*shell[^)]*\)/,
     'the navigate branch must decide whether the response IS the shell before caching it as one');
-  assert.match(sw, /const DOCS = .+rules.+regles/,
+  assert.match(sw, /const DOCS = \/\^/,
     'the standalone documents have to be named somewhere for that decision to be possible');
+});
+
+/* Naming them by hand is a list that goes stale the moment a document is
+   added, and going stale means the new page silently overwrites the offline
+   game again. So the list is checked against what is actually on disk rather
+   than against a copy of itself. */
+test('every standalone document is known to the service worker', () => {
+  const docs = readdirSync(join(ROOT, 'public'), { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .filter((d) => existsSync(join(ROOT, 'public', d.name, 'index.html')))
+    .map((d) => d.name);
+
+  assert.ok(docs.length >= 4, 'expected the rules and strategy documents to be found');
+
+  const DOCS = new RegExp(sw.match(/const DOCS = (\/.+\/);/)[1].slice(1, -1));
+  for (const d of docs) {
+    assert.ok(DOCS.test('/' + d + '/'),
+      `/${d}/ is a document but the worker would cache it as the game shell, `
+      + 'which replaces the board with a page of prose for anyone offline');
+  }
 });
 
 test('the standalone rules pages are reachable from the game', () => {

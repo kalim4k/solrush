@@ -236,6 +236,7 @@ export default {
 
   /* ---- mentions légales ---- */
   legal_rules: 'Règles',
+  legal_strategy: 'Stratégie',
   legal_help: 'Aide',
   legal_terms: 'Conditions',
   legal_privacy: 'Confidentialité',

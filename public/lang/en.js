@@ -235,6 +235,7 @@ export default {
 
   /* ---- legal ---- */
   legal_rules: 'Rules',
+  legal_strategy: 'Strategy',
   legal_help: 'Help',
   legal_terms: 'Terms',
   legal_privacy: 'Privacy',

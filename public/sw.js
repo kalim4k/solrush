@@ -7,7 +7,7 @@
 const CACHE = 'solrush-v13';
 
 // Addresses that are documents in their own right rather than the game shell.
-const DOCS = /^\/(rules|regles)\/?$/;
+const DOCS = /^\/(rules|regles|strategy|strategie)\/?$/;
 
 const SHELL = [
   '/',

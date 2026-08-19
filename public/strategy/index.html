@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#eef1f7">
+
+    <title>SolRush Strategy — How to Win at Quoridor</title>
+    <meta name="description" content="Walls do not block, they tax. Learn to count the one number that decides every Quoridor game, when to run instead of build, how walls compound, and why Race mode needs different maths.">
+    <link rel="canonical" href="https://solrush.site/strategy/">
+    <link rel="alternate" hreflang="en" href="https://solrush.site/strategy/">
+    <link rel="alternate" hreflang="fr" href="https://solrush.site/strategie/">
+    <link rel="alternate" hreflang="x-default" href="https://solrush.site/strategy/">
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="SolRush">
+    <meta property="og:url" content="https://solrush.site/strategy/">
+    <meta property="og:title" content="SolRush Strategy — How to Win at Quoridor">
+    <meta property="og:description" content="Most players lose because they use walls to block. Walls cannot block. Here is what actually decides a game.">
+    <meta property="og:image" content="https://solrush.site/icons/og-card.png">
+
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+
+    <script async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
+        crossorigin="anonymous"></script>
+
+<style>
+        :root {
+            --bg: #eef1f7;
+            --card: #ffffff;
+            --text: #1d2440;
+            --muted: #8b93af;
+            --violet: #2f6df6;
+            --bezel: #c9d2e2;
+            --shadow: 0 8px 24px rgba(50, 70, 130, .12);
+        }
+
+        :root:not([data-theme="light"]) {
+            color-scheme: light;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #12141f;
+                --card: #1b1f30;
+                --text: #e8eaf6;
+                --muted: #8b93b4;
+                --bezel: #2c3349;
+                --shadow: 0 10px 28px rgba(0, 0, 0, .5);
+                color-scheme: dark;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            padding: 0 20px env(safe-area-inset-bottom);
+        }
+
+        .wrap {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 28px 0 64px;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            padding-bottom: 22px;
+            border-bottom: 1px solid var(--bezel);
+        }
+
+        nav a {
+            color: var(--violet);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        h1 {
+            font-size: 2rem;
+            line-height: 1.2;
+            margin: 30px 0 10px;
+        }
+
+        h2 {
+            font-size: 1.3rem;
+            margin: 38px 0 10px;
+        }
+
+        h3 {
+            font-size: 1.05rem;
+            margin: 24px 0 6px;
+        }
+
+        .lede {
+            font-size: 1.1rem;
+            color: var(--muted);
+            margin-top: 0;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--bezel);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 18px 22px;
+            margin: 26px 0;
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        ul,
+        ol {
+            padding-left: 22px;
+        }
+
+        li {
+            margin: 7px 0;
+        }
+
+        dt {
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        dd {
+            margin: 4px 0 0;
+            color: var(--muted);
+        }
+
+        .play {
+            display: inline-block;
+            background: var(--violet);
+            color: #fff;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 13px 26px;
+            border-radius: 999px;
+            margin-top: 8px;
+        }
+
+        footer {
+            margin-top: 48px;
+            padding-top: 20px;
+            border-top: 1px solid var(--bezel);
+            color: var(--muted);
+            font-size: .92rem;
+        }
+
+        footer a {
+            color: var(--violet);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <nav>
+            <a href="/">← Play SolRush</a>
+            <a href="/rules/">Rules</a>
+            <span class="spacer"></span>
+            <a href="/strategie/" hreflang="fr">Français</a>
+        </nav>
+
+        <h1>SolRush strategy: how to actually win</h1>
+        <p class="lede">Most players lose SolRush for one reason: they treat walls as a way to stop their opponent.
+            Walls cannot stop anyone. Once you understand what they really do, the game becomes a counting exercise —
+            and counting is something you can get better at.</p>
+
+        <p>This assumes you already know how the pieces move. If you do not, read <a href="/rules/">the rules</a>
+            first — it takes three minutes. What follows is the part the rules page deliberately leaves out: the
+            handful of ideas that decide almost every match between two people who both know the rules.</p>
+
+        <div class="card">
+            <h2>The one number that matters</h2>
+            <p>At any moment, the entire position comes down to three things: how many moves your shortest path to
+                your goal row takes, how many moves theirs takes, and whose turn it is.</p>
+            <p>Call the difference your <strong>lead</strong>. If your shortest path is 7 and theirs is 9, you lead by
+                2. That number, and nothing else, tells you whether you are winning. Not how many walls you are
+                holding, not how clever your last wall looked, not how much territory you seem to control. There is no
+                territory in this game. There is a race, and there is a lead.</p>
+            <p>Every decision you make should be judged one way: what did it do to the lead?</p>
+        </div>
+
+        <h2>Walls do not block. They tax.</h2>
+        <p>The rule that you may never seal an opponent off completely is not a technicality — it is the rule the
+            whole game is built on. Because of it, no wall you ever place will stop anybody. A wall can only make
+            somebody walk further.</p>
+        <p>So stop asking "how do I block them?" and start asking "how much does this cost them?" A wall that adds
+            four moves to their path is worth four times one that adds one. A wall that adds nothing — and beginners
+            place these constantly — has cost you a tenth of your entire supply and bought you literally nothing.</p>
+        <p>The counting is easy to do in your head once you get in the habit. Before you place a wall, trace their
+            shortest route with your eyes and count the squares. Place the wall in your imagination. Trace again. The
+            difference is what the wall is worth. If it is zero, you have found a bad move — and you found it for
+            free.</p>
+
+        <h3>Where walls are worth the most</h3>
+        <ul>
+            <li><strong>Ahead of their pawn, not beside it and never behind it.</strong> They are walking one way.
+                A wall behind them is a wall they will never meet. This is the single most common wasted wall.</li>
+            <li><strong>Where the board is already narrow.</strong> A wall in the open middle of an empty board is
+                easy to walk around — one step sideways and the cost is one move. The same wall placed where two
+                earlier walls already squeeze the route can cost six.</li>
+            <li><strong>Against the edge.</strong> The board edge does half the work for you. Walls near the side
+                columns lean on something that cannot be walked around.</li>
+        </ul>
+
+        <div class="card">
+            <h2>Walls compound; a single wall rarely pays</h2>
+            <p>This is the technique that separates a player who has read the rules from a player who has played a
+                hundred games. One wall usually adds one or two moves. Two walls placed in relation to each other —
+                the second one closing the detour the first one opened — can add six or eight.</p>
+            <p>The standard shape is a staircase: a wall forces them sideways, and the next wall sits where they were
+                going to rejoin their route, forcing them sideways again. Each one alone is worth little. Together
+                they are worth more than the sum, because the second one is only cheap for you and expensive for them
+                <em>because the first one is already there</em>.</p>
+            <p>The practical consequence is uncomfortable but true: if you are not willing to spend a second wall
+                following up the first, often you should not spend the first one either.</p>
+        </div>
+
+        <h2>The opening: move, do not build</h2>
+        <p>Advancing your pawn costs you nothing and gains you a move. Placing a wall costs you a move <em>and</em> a
+            tenth of your supply.</p>
+        <p>In the first few turns your opponent is far away, the board is wide open, and any wall you place is one
+            they can walk around for the price of a single sideways step. You are paying a full turn to cost them
+            almost nothing. Meanwhile they advanced.</p>
+        <p>So: run first. Push your pawn straight up the middle. The middle matters because it keeps your options
+            open — a pawn against the side wall has fewer ways around a future obstacle, and every wall placed against
+            it is worth more to your opponent.</p>
+        <p>The player who opens with walls is, in most games between beginners, the player who loses. Watch for it in
+            your own games; it is a habit that comes from thinking of walls as defence.</p>
+
+        <h2>When to switch from running to building</h2>
+        <p>Here is the rule that decides most games, and it follows directly from the lead:</p>
+        <ul>
+            <li><strong>If you are ahead and it is your move, just run.</strong> You win the pure race. Do not
+                complicate a position you are already winning. Every wall you place is a turn you did not spend
+                advancing, which hands back part of your lead.</li>
+            <li><strong>If you are behind, you must build</strong> — the pure race is lost by definition, so you have
+                to change the numbers. And you have to change them by more than the move you are spending.</li>
+            <li><strong>If it is level, the player to move is ahead.</strong> Count carefully here; this is where
+                games are actually decided.</li>
+        </ul>
+        <p>The mistake in the other direction is real too: hoarding walls. Ten unspent walls at the moment your
+            opponent crosses the line are ten wasted moves' worth of resource. Walls have no value at the end of the
+            game. Spend them while they can still change something.</p>
+
+        <div class="card">
+            <h2>Jumping is a tool, not a formality</h2>
+            <p>When the two pawns end up face to face, you may jump straight over. If a wall or the board edge stops
+                the straight jump, the two diagonal steps become legal instead.</p>
+            <p>That second clause is worth knowing properly, because it hands you a move that does not otherwise
+                exist. A diagonal step is normally impossible in this game. Standing next to your opponent, with a
+                wall behind them, it becomes possible — and a diagonal can be worth a full move over walking around.
+                Players who know this deliberately step next to the opponent to unlock it.</p>
+            <p>It also means an opponent standing in front of you is not an obstacle. Beginners walk around them. You
+                jump, and gain a move.</p>
+        </div>
+
+        <h2>The five mistakes that cost the most games</h2>
+        <ol>
+            <li><strong>Walling behind the opponent's pawn.</strong> They are never coming back. The wall does
+                nothing for the rest of the game.</li>
+            <li><strong>Walling early.</strong> Cheap for them to walk around, expensive for you to have placed.</li>
+            <li><strong>Walling to "protect" your own route.</strong> Walls are symmetric — a wall you place near
+                your own path can be used against you by the next wall your opponent places next to it.</li>
+            <li><strong>Hugging the side of the board.</strong> Fewer ways around, and the edge helps whoever is
+                walling you.</li>
+            <li><strong>Finishing with walls in hand.</strong> Unspent walls score nothing.</li>
+        </ol>
+
+        <h2>Race mode is not the same game</h2>
+        <p>SolRush's second mode changes the board to 9×13, gives each player fifteen walls, and — this is the part
+            that changes everything — <strong>starts both pawns on the bottom row, both running to the top</strong>.</p>
+        <p>In the classic duel you and your opponent travel in opposite directions, which is why a wall placed in
+            their way is usually free for you: you were never going to walk there. In race mode you are both heading
+            the same way, through the same territory. A wall that lengthens their route very often lengthens yours
+            too.</p>
+        <p>So the counting changes. In duel you ask "what does this cost them?". In race you have to ask "what does
+            this cost them <em>minus</em> what it costs me?", and a wall that adds three moves to their path and two
+            to yours is worth one move, not three. The board is also longer, so there is more running and the lead
+            swings more slowly. Fifteen walls sounds generous; on a taller board, against an opponent going the same
+            way, it is about right.</p>
+
+        <h2>How to get better, concretely</h2>
+        <p>Play the AI on the harder settings and pay attention to when it places walls rather than what it places.
+            It is counting the same number you should be counting, and its timing is the part worth stealing.</p>
+        <p>Then, in your own games, force yourself to do one thing: before every wall, count both paths. Out loud if
+            you have to. Most players never count once in an entire game, and simply counting puts you ahead of
+            them.</p>
+
+        <p><a class="play" href="/">Play SolRush now</a></p>
+
+        <footer>
+            <p>Written by the people who built the engine and the AI you are playing against.</p>
+            <p><a href="/">Play</a> · <a href="/rules/">Rules</a> · <a href="/strategie/">Français</a></p>
+        </footer>
+    </div>
+</body>
+
+</html>

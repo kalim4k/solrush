@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#eef1f7">
+
+    <title>Stratégie SolRush — Comment gagner au Quoridor</title>
+    <meta name="description" content="Un mur ne bloque pas, il taxe. Apprenez à compter le seul chiffre qui décide une partie de Quoridor, quand courir plutôt que construire, comment les murs se composent, et pourquoi le mode Course demande un autre calcul.">
+    <link rel="canonical" href="https://solrush.site/strategie/">
+    <link rel="alternate" hreflang="en" href="https://solrush.site/strategy/">
+    <link rel="alternate" hreflang="fr" href="https://solrush.site/strategie/">
+    <link rel="alternate" hreflang="x-default" href="https://solrush.site/strategy/">
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="SolRush">
+    <meta property="og:url" content="https://solrush.site/strategie/">
+    <meta property="og:title" content="Stratégie SolRush — Comment gagner au Quoridor">
+    <meta property="og:description" content="La plupart des joueurs perdent parce qu'ils murent pour bloquer. Un mur ne bloque pas. Voici ce qui décide vraiment une partie.">
+    <meta property="og:image" content="https://solrush.site/icons/og-card.png">
+
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+
+    <script async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
+        crossorigin="anonymous"></script>
+
+<style>
+        :root {
+            --bg: #eef1f7;
+            --card: #ffffff;
+            --text: #1d2440;
+            --muted: #8b93af;
+            --violet: #2f6df6;
+            --bezel: #c9d2e2;
+            --shadow: 0 8px 24px rgba(50, 70, 130, .12);
+        }
+
+        :root:not([data-theme="light"]) {
+            color-scheme: light;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #12141f;
+                --card: #1b1f30;
+                --text: #e8eaf6;
+                --muted: #8b93b4;
+                --bezel: #2c3349;
+                --shadow: 0 10px 28px rgba(0, 0, 0, .5);
+                color-scheme: dark;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 17px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            padding: 0 20px env(safe-area-inset-bottom);
+        }
+
+        .wrap {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 28px 0 64px;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: center;
+            padding-bottom: 22px;
+            border-bottom: 1px solid var(--bezel);
+        }
+
+        nav a {
+            color: var(--violet);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        .spacer {
+            flex: 1;
+        }
+
+        h1 {
+            font-size: 2rem;
+            line-height: 1.2;
+            margin: 30px 0 10px;
+        }
+
+        h2 {
+            font-size: 1.3rem;
+            margin: 38px 0 10px;
+        }
+
+        h3 {
+            font-size: 1.05rem;
+            margin: 24px 0 6px;
+        }
+
+        .lede {
+            font-size: 1.1rem;
+            color: var(--muted);
+            margin-top: 0;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--bezel);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 18px 22px;
+            margin: 26px 0;
+        }
+
+        .card h2 {
+            margin-top: 0;
+        }
+
+        ul,
+        ol {
+            padding-left: 22px;
+        }
+
+        li {
+            margin: 7px 0;
+        }
+
+        dt {
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        dd {
+            margin: 4px 0 0;
+            color: var(--muted);
+        }
+
+        .play {
+            display: inline-block;
+            background: var(--violet);
+            color: #fff;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 13px 26px;
+            border-radius: 999px;
+            margin-top: 8px;
+        }
+
+        footer {
+            margin-top: 48px;
+            padding-top: 20px;
+            border-top: 1px solid var(--bezel);
+            color: var(--muted);
+            font-size: .92rem;
+        }
+
+        footer a {
+            color: var(--violet);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <nav>
+            <a href="/">← Jouer à SolRush</a>
+            <a href="/regles/">Règles</a>
+            <span class="spacer"></span>
+            <a href="/strategy/" hreflang="en">English</a>
+        </nav>
+
+        <h1>Stratégie SolRush : comment gagner vraiment</h1>
+        <p class="lede">La plupart des joueurs perdent à SolRush pour une seule raison : ils voient les murs comme un
+            moyen d'arrêter l'adversaire. Un mur n'arrête personne. Une fois qu'on a compris ce qu'ils font réellement,
+            le jeu devient un exercice de comptage — et compter, ça se travaille.</p>
+
+        <p>On suppose ici que vous savez déjà comment les pièces bougent. Sinon, lisez <a href="/regles/">les
+            règles</a> d'abord, c'est trois minutes. Ce qui suit est la partie que la page de règles laisse
+            volontairement de côté : la poignée d'idées qui décident presque toutes les parties entre deux personnes
+            qui connaissent les règles.</p>
+
+        <div class="card">
+            <h2>Le seul chiffre qui compte</h2>
+            <p>À tout instant, la position entière tient en trois choses : le nombre de coups de votre plus court
+                chemin vers votre ligne d'arrivée, le nombre de coups du sien, et à qui c'est de jouer.</p>
+            <p>Appelons la différence votre <strong>avance</strong>. Si votre plus court chemin fait 7 et le sien 9,
+                vous avez deux coups d'avance. Ce nombre, et rien d'autre, dit si vous êtes en train de gagner. Pas le
+                nombre de murs qui vous restent, pas l'élégance apparente de votre dernier mur, pas le territoire que
+                vous croyez contrôler. Il n'y a pas de territoire dans ce jeu. Il y a une course, et il y a une
+                avance.</p>
+            <p>Chaque décision se juge d'une seule façon : qu'est-ce qu'elle a fait à l'avance ?</p>
+        </div>
+
+        <h2>Les murs ne bloquent pas. Ils taxent.</h2>
+        <p>La règle qui interdit d'enfermer complètement l'adversaire n'est pas un détail technique — c'est la règle
+            sur laquelle tout le jeu repose. À cause d'elle, aucun mur que vous poserez n'arrêtera jamais personne. Un
+            mur ne peut que faire marcher quelqu'un plus longtemps.</p>
+        <p>Alors arrêtez de vous demander « comment le bloquer ? » et demandez-vous « combien ça lui coûte ? ». Un mur
+            qui ajoute quatre coups à son trajet vaut quatre fois celui qui en ajoute un. Un mur qui n'ajoute rien — et
+            les débutants en posent sans arrêt — vous a coûté un dixième de votre réserve entière et ne vous a
+            littéralement rien rapporté.</p>
+        <p>Le calcul se fait de tête sans peine une fois l'habitude prise. Avant de poser un mur, suivez son plus
+            court trajet des yeux et comptez les cases. Posez le mur en imagination. Recomptez. La différence, c'est ce
+            que vaut le mur. Si elle est nulle, vous venez de trouver un mauvais coup — et vous l'avez trouvé
+            gratuitement.</p>
+
+        <h3>Où les murs valent le plus cher</h3>
+        <ul>
+            <li><strong>Devant son pion, pas à côté, et jamais derrière.</strong> Il marche dans un sens. Un mur
+                derrière lui est un mur qu'il ne rencontrera jamais. C'est de loin le mur gaspillé le plus fréquent.</li>
+            <li><strong>Là où le plateau est déjà étroit.</strong> Un mur au milieu d'un plateau vide se contourne
+                d'un pas de côté : coût, un coup. Le même mur posé là où deux murs antérieurs resserrent déjà le
+                passage peut en coûter six.</li>
+            <li><strong>Contre le bord.</strong> Le bord du plateau fait la moitié du travail à votre place. Les murs
+                près des colonnes latérales s'appuient sur quelque chose qui, lui, ne se contourne pas.</li>
+        </ul>
+
+        <div class="card">
+            <h2>Les murs se composent ; un mur seul paie rarement</h2>
+            <p>Voici la technique qui sépare celui qui a lu les règles de celui qui a joué cent parties. Un mur ajoute
+                en général un ou deux coups. Deux murs posés l'un par rapport à l'autre — le second fermant le
+                détour ouvert par le premier — peuvent en ajouter six ou huit.</p>
+            <p>La forme classique est l'escalier : un mur le pousse sur le côté, et le mur suivant se place là où il
+                comptait rejoindre son trajet, ce qui le pousse encore. Chacun pris seul ne vaut pas grand-chose.
+                Ensemble ils valent plus que leur somme, parce que le second n'est bon marché pour vous et cher pour
+                lui <em>que parce que le premier est déjà là</em>.</p>
+            <p>La conséquence pratique est inconfortable mais vraie : si vous n'êtes pas prêt à dépenser un second mur
+                pour suivre le premier, souvent il ne fallait pas dépenser le premier non plus.</p>
+        </div>
+
+        <h2>L'ouverture : avancez, ne construisez pas</h2>
+        <p>Avancer votre pion ne vous coûte rien et vous rapporte un coup. Poser un mur vous coûte un coup <em>et</em>
+            un dixième de votre réserve.</p>
+        <p>Dans les premiers tours l'adversaire est loin, le plateau est grand ouvert, et tout mur que vous posez se
+            contourne au prix d'un seul pas de côté. Vous payez un tour entier pour ne presque rien lui coûter.
+            Pendant ce temps, lui a avancé.</p>
+        <p>Donc : courez d'abord. Poussez votre pion droit par le milieu. Le milieu compte, parce qu'il garde vos
+            options ouvertes — un pion collé au bord a moins de façons de contourner un futur obstacle, et chaque mur
+            posé contre ce bord vaut plus cher pour votre adversaire.</p>
+        <p>Celui qui ouvre en posant des murs est, dans la plupart des parties entre débutants, celui qui perd.
+            Guettez-le dans vos propres parties ; c'est une habitude qui vient de voir les murs comme une défense.</p>
+
+        <h2>Quand passer de la course à la construction</h2>
+        <p>Voici la règle qui décide la majorité des parties, et elle découle directement de l'avance :</p>
+        <ul>
+            <li><strong>Si vous menez et que c'est à vous, courez.</strong> Vous gagnez la course pure. Ne compliquez
+                pas une position déjà gagnante. Chaque mur posé est un tour non passé à avancer, donc une partie de
+                votre avance rendue.</li>
+            <li><strong>Si vous êtes derrière, il faut construire</strong> — la course pure est perdue par définition,
+                il faut donc changer les chiffres. Et les changer de plus que le coup que vous y consacrez.</li>
+            <li><strong>Si c'est à égalité, celui qui joue mène.</strong> Comptez soigneusement ici ; c'est là que les
+                parties se décident réellement.</li>
+        </ul>
+        <p>L'erreur inverse existe aussi : thésauriser. Dix murs non dépensés au moment où l'adversaire franchit la
+            ligne, ce sont dix coups de ressource gaspillés. Les murs ne valent rien à la fin de la partie.
+            Dépensez-les tant qu'ils peuvent encore changer quelque chose.</p>
+
+        <div class="card">
+            <h2>Le saut est un outil, pas une formalité</h2>
+            <p>Quand les deux pions se retrouvent face à face, vous pouvez sauter par-dessus tout droit. Si un mur ou
+                le bord du plateau empêche le saut droit, les deux pas en diagonale deviennent légaux à la place.</p>
+            <p>Cette seconde clause mérite d'être sue correctement, parce qu'elle vous offre un coup qui n'existe pas
+                autrement. Un pas en diagonale est normalement impossible dans ce jeu. Collé à l'adversaire, avec un
+                mur derrière lui, il devient possible — et une diagonale peut valoir un coup entier par rapport au
+                contournement. Les joueurs qui le savent viennent délibérément se coller à l'adversaire pour le
+                débloquer.</p>
+            <p>Cela veut dire aussi qu'un adversaire planté devant vous n'est pas un obstacle. Le débutant le
+                contourne. Vous, vous sautez, et vous gagnez un coup.</p>
+        </div>
+
+        <h2>Les cinq erreurs qui coûtent le plus de parties</h2>
+        <ol>
+            <li><strong>Poser un mur derrière le pion adverse.</strong> Il ne reviendra jamais. Le mur ne sert à rien
+                pour le reste de la partie.</li>
+            <li><strong>Poser des murs trop tôt.</strong> Bon marché à contourner pour lui, cher à poser pour vous.</li>
+            <li><strong>Poser un mur pour « protéger » son propre trajet.</strong> Les murs sont symétriques — un mur
+                posé près de votre chemin peut se retourner contre vous dès que l'adversaire en pose un à côté.</li>
+            <li><strong>Longer le bord du plateau.</strong> Moins de façons de contourner, et le bord aide celui qui
+                vous mure.</li>
+            <li><strong>Finir avec des murs en main.</strong> Un mur non dépensé ne rapporte rien.</li>
+        </ol>
+
+        <h2>Le mode Course n'est pas le même jeu</h2>
+        <p>Le second mode de SolRush passe le plateau en 9×13, donne quinze murs à chacun et — c'est le point qui
+            change tout — <strong>place les deux pions sur la ligne du bas, tous deux courant vers le haut</strong>.</p>
+        <p>Dans le duel classique, vous et votre adversaire allez en sens opposés, et c'est pour cela qu'un mur posé
+            sur son chemin vous est en général gratuit : vous n'alliez de toute façon pas passer par là. En mode
+            Course, vous allez tous les deux dans le même sens, à travers le même terrain. Un mur qui allonge son
+            trajet allonge très souvent le vôtre aussi.</p>
+        <p>Le calcul change donc. En duel, on demande « combien ça lui coûte ? ». En course, il faut demander « combien
+            ça lui coûte <em>moins</em> combien ça me coûte ? », et un mur qui ajoute trois coups chez lui et deux chez
+            vous vaut un coup, pas trois. Le plateau est aussi plus long, donc on court davantage et l'avance bascule
+            plus lentement. Quinze murs semble généreux ; sur un plateau plus haut, contre quelqu'un qui va dans le
+            même sens, c'est à peu près juste.</p>
+
+        <h2>Comment progresser, concrètement</h2>
+        <p>Jouez contre l'IA dans ses réglages difficiles et regardez <em>quand</em> elle pose ses murs plutôt que ce
+            qu'elle pose. Elle compte le même nombre que vous devriez compter, et c'est son timing qui vaut d'être
+            volé.</p>
+        <p>Ensuite, dans vos parties, forcez-vous à une seule chose : avant chaque mur, comptez les deux chemins. À
+            voix haute s'il le faut. La plupart des joueurs ne comptent pas une seule fois de toute la partie, et le
+            simple fait de compter vous met déjà devant eux.</p>
+
+        <p><a class="play" href="/">Jouer à SolRush</a></p>
+
+        <footer>
+            <p>Écrit par ceux qui ont programmé le moteur et l'IA contre laquelle vous jouez.</p>
+            <p><a href="/">Jouer</a> · <a href="/regles/">Règles</a> · <a href="/strategy/">English</a></p>
+        </footer>
+    </div>
+</body>
+
+</html>
