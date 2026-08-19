@@ -137,6 +137,8 @@ export default {
   finish_title: 'Firma de victoria',
   finish_hint: 'Se reproduce en la pantalla de tu rival cuando ganas. Toca una para verla.',
   plus_locked: 'Solo con SolRush Plus',
+  plus_need_account: "Crea una cuenta primero: Plus se guarda en la cuenta, no en este teléfono.",
+  plus_thanks: "Ya tienes SolRush Plus. Todo está desbloqueado.",
   replay_share: "Enviar esta partida",
   replay_share_text: "Mira esta partida de SolRush",
   replay_copied: "Enlace copiado",

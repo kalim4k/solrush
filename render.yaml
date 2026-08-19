@@ -54,6 +54,13 @@ services:
       - key: MAIL_FROM
         sync: false
 
+      # Payments. Set both in the Render dashboard; without them the buy
+      # button tells players payment is not open yet.
+      - key: MAKETOU_API_KEY
+        sync: false
+      - key: MAKETOU_PRODUCT_ID
+        sync: false
+
       # Optional: TURN relay for voice in friend rooms. Without it, voice still
       # works for most pairs and fails cleanly for the rest.
       - key: TURN_URL

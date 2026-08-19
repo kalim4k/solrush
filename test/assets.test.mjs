@@ -34,8 +34,8 @@ const VERSIONED = ['public/js/app.js', 'public/css/style.css'];
 /* Bump BOTH of these together, or neither.
    1. change ?v= in public/index.html
    2. put the new hash here (the failure message prints it) */
-const ASSET_VERSION = 149;
-const ASSET_HASH = 'e3c12e189a56df54d497c9b63c279c7821aa3489fbc43dae93b5ae763ff02d93';
+const ASSET_VERSION = 150;
+const ASSET_HASH = '17a91bfe060ea27a00a0fe99dafe57528fcfb7cdacf1fbecf67f086ae299ad04';
 
 test('the versioned assets have not changed without a version bump', () => {
   const h = createHash('sha256');

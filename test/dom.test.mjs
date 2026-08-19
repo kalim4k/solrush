@@ -221,3 +221,42 @@ test('the price is written down exactly once', () => {
       `${code}.js carries a price; six copies of a number is six chances to disagree`);
   }
 });
+
+/* Maketou has no webhooks. Nothing will ever call this server to say a payment
+   landed, so the only sources of truth are the redirect back from checkout —
+   which is lost whenever somebody closes the tab or switches to their
+   mobile-money app and does not return — and asking Maketou about the cart.
+
+   These pin the two properties that keep a lost redirect from becoming money
+   taken for nothing, and keep a browser from being able to claim it paid. */
+test('a payment is confirmed by asking, not by being told', () => {
+  const server = readFileSync(join(ROOT, 'server/index.js'), 'utf8');
+  const route = server.slice(server.indexOf("case '/api/plus/status'"));
+  const body = route.slice(0, route.indexOf("case '/api/replay'"));
+
+  assert.match(body, /getCart\(/,
+    'the status route must ask the processor rather than trust the caller');
+  assert.doesNotMatch(body, /body\.(plus|paid|status)/,
+    'nothing the browser sends may decide whether somebody has paid');
+  assert.match(body, /cart\.status === PAID/,
+    'only the one completed status grants Plus');
+});
+
+test('an unfinished payment is re-checked when the player comes back', () => {
+  const app = readFileSync(join(ROOT, 'public/js/app.js'), 'utf8');
+  assert.match(app, /checkPlus\(\);/,
+    'the app must re-ask on its own, not only on return from checkout');
+  const server = readFileSync(join(ROOT, 'server/index.js'), 'utf8');
+  assert.match(server, /status = 'waiting_payment'/,
+    'open carts have to be findable afterwards, which is what the table is for');
+});
+
+test('the payment keys are not in the repository', () => {
+  for (const f of ['server/maketou.js', 'render.yaml', '.env.example']) {
+    const src = readFileSync(join(ROOT, f), 'utf8');
+    // [ \t]* rather than \s*, which crosses the newline and matches the NEXT
+    // variable's name — .env.example failed this on its own blank placeholder.
+    assert.doesNotMatch(src, /MAKETOU_API_KEY[ \t]*[:=][ \t]*["']?[A-Za-z0-9_-]{12,}/,
+      `${f} looks like it carries a real key`);
+  }
+});

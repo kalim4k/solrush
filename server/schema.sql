@@ -129,6 +129,30 @@ CREATE UNIQUE INDEX IF NOT EXISTS matches_token_idx ON matches (token);
 CREATE INDEX IF NOT EXISTS matches_p0_idx ON matches (p0_user, ended_at DESC);
 CREATE INDEX IF NOT EXISTS matches_p1_idx ON matches (p1_user, ended_at DESC);
 
+/* ---------- payments ---------- */
+-- One row per attempt to buy Plus.
+--
+-- This table exists because Maketou has no webhooks: nothing will ever call us
+-- to say a payment landed. The redirect back from the checkout page is the only
+-- notification there is, and it is lost whenever somebody closes the tab or
+-- switches to their mobile-money app and does not come back. Writing the cart
+-- id down at creation is what makes the answer recoverable afterwards — the
+-- player's next connection asks Maketou about anything still open.
+--
+-- Without it, a payment whose redirect went missing would be money taken for
+-- nothing, discoverable only by the person who paid.
+CREATE TABLE IF NOT EXISTS plus_carts (
+  cart_id    text PRIMARY KEY,
+  user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status     text NOT NULL DEFAULT 'waiting_payment',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  checked_at timestamptz
+);
+-- "anything this player left unfinished", which is the question asked on every
+-- reconnection, so it must not be a scan of every attempt ever made.
+CREATE INDEX IF NOT EXISTS plus_carts_open_idx
+  ON plus_carts (user_id) WHERE status = 'waiting_payment';
+
 /* ---------- web push ---------- */
 CREATE TABLE IF NOT EXISTS push_subs (
   endpoint   text PRIMARY KEY,

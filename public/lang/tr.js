@@ -140,6 +140,8 @@ export default {
   finish_title: 'Zafer imzası',
   finish_hint: 'Kazandığında rakibinin ekranında da oynar. Görmek için birine dokun.',
   plus_locked: 'Yalnızca SolRush Plus',
+  plus_need_account: "Önce bir hesap oluşturun — Plus telefonda değil, hesapta saklanır.",
+  plus_thanks: "SolRush Plus sizde. Her şey açık.",
   replay_share: "Bu oyunu gönder",
   replay_share_text: "Bu SolRush oyununu izle",
   replay_copied: "Bağlantı kopyalandı",

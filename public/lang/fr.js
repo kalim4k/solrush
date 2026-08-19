@@ -139,6 +139,8 @@ export default {
   finish_title: 'Signature de victoire',
   finish_hint: 'Elle se joue chez ton adversaire quand tu gagnes. Touche-en une pour la voir.',
   plus_locked: 'Réservé à SolRush Plus',
+  plus_need_account: "Crée un compte d’abord — Plus est gardé sur le compte, pas sur ce téléphone.",
+  plus_thanks: "Tu as SolRush Plus. Tout est débloqué.",
   replay_share: "Envoyer cette partie",
   replay_share_text: "Regarde cette partie de SolRush",
   replay_copied: "Lien copié",

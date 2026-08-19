@@ -564,6 +564,8 @@ function handleWsMessage(msg) {
                sees the same pawn everybody else sees, instead of admiring a
                gold piece that exists only on their screen. */
             myPlus = Boolean(msg.plus);
+            // A purchase made on another device shows up here.
+            if (myPlus) $('overlay-plus').hidden = true;
             /* Written through to storage, not just held in memory: this is how
                a second device ends up wearing what the account owns, and it has
                to survive the next reload without a server round trip — the
@@ -2514,12 +2516,85 @@ function openPlus() {
     $('overlay-plus').hidden = false;
 }
 
-/* The seam the payment processor plugs into. Everything above is finished and
-   shipped; this is the only part waiting, and it is deliberately one function
-   so wiring a processor touches nothing else. Until then it says so plainly
-   rather than pretending to take money. */
-function startPurchase() {
-    toast(t('plus_soon'));
+/* Buying it.
+
+   An account first, and not as bureaucracy: the receipt needs an email, and a
+   purchase attached to a guest is a purchase lost the first time that browser
+   clears its cache. Better to say so before taking any money than after. */
+async function startPurchase() {
+    if (!session?.access_token) {
+        $('overlay-plus').hidden = true;
+        show('screen-profile');
+        openAuthForm('register');
+        return toast(t('plus_need_account'));
+    }
+    const btn = $('plus-buy');
+    btn.disabled = true;
+    try {
+        const r = await fetch('/api/plus/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + session.access_token,
+            },
+            body: '{}',
+        });
+        const out = await r.json().catch(() => ({}));
+        if (out.plus) { myPlus = true; return afterPlus(); }
+        // 503 is the honest case: no processor configured on this deployment.
+        if (r.status === 503) return toast(t('plus_soon'));
+        if (!r.ok || !out.url) return toast(t('err_generic'));
+        location.href = out.url;   // their checkout page takes it from here
+    } catch { toast(t('offline_bar')); } finally { btn.disabled = false; }
+}
+
+function afterPlus() {
+    $('overlay-plus').hidden = true;
+    renderCosmetics();
+    updateProfileUI();
+    loadMyGames();
+    toast(t('plus_thanks'));
+}
+
+/* Did the payment land?
+
+   Asked on return from the checkout page, and again every time the game opens
+   while the account still lacks Plus — because the return trip is exactly the
+   part that goes missing. Somebody who pays on their phone, switches to their
+   mobile-money app to confirm, and never comes back to the tab has still paid,
+   and the next time they open SolRush they should simply have it.
+
+   The server answers from Maketou, never from anything this browser says. */
+async function checkPlus() {
+    if (myPlus || !session?.access_token) return;
+    try {
+        const r = await fetch('/api/plus/status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + session.access_token,
+            },
+            body: '{}',
+        });
+        const out = await r.json().catch(() => ({}));
+        if (out.plus) { myPlus = true; afterPlus(); }
+    } catch { /* offline; it will be asked again next time */ }
+}
+
+/* Coming back from checkout. The address is cleaned up first so a refresh does
+   not look like a second payment, then the server is asked what happened. */
+function takePlusReturnFromUrl() {
+    if (location.pathname !== '/plus/done') return;
+    history.replaceState(null, '', '/');
+    // The payment settles on their side a moment after the redirect fires, so
+    // a single immediate question can honestly answer "not yet". Ask a few
+    // times, spaced out, before leaving it to the next time the game opens.
+    let tries = 0;
+    const again = () => {
+        checkPlus();
+        if (++tries < 5 && !myPlus) setTimeout(again, 2000);
+    };
+    setTimeout(again, 800);
 }
 
 /* Refusing a sale you just offered is the bug this replaces: tapping a locked
@@ -3356,6 +3431,7 @@ async function boot() {
     // After applyI18n, so a replay that fails to load can say so in the
     // player's own language rather than printing a translation key.
     takeReplayFromUrl();
+    takePlusReturnFromUrl();
     connectWs();
     try {
         config = await (await fetch('/api/config')).json();
@@ -3368,6 +3444,11 @@ async function boot() {
                 session = account.getSession();
                 // kept apart so a stumble here cannot swallow the reset form below
                 try { await afterLogin(); } catch (e) { console.error('afterLogin failed', e); }
+                /* Anything paid for but never confirmed. This is the safety net
+                   under a redirect that went missing: whatever happened to the
+                   tab, the next time this player opens the game they get what
+                   they paid for. Not awaited — nothing on screen waits on it. */
+                checkPlus();
             }
             // A reset link used to land on the ordinary profile because the
             // session it carried was valid, so the password form was never

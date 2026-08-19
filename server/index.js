@@ -28,6 +28,7 @@ import {
   DEFAULT_SKIN, DEFAULT_BADGE, DEFAULT_PACK, DEFAULT_FINISH,
   resolveSkin, resolveBadge, resolvePack, resolveFinish, isPhoto,
 } from '../public/js/cosmetics.js';
+import { createCart, getCart, configured as plusConfigured, PAID } from './maketou.js';
 import { getStreak, touchStreak, restoreStreak, mergeDeviceStreak } from './streak.js';
 import { checkNick, randomNick } from '../public/js/nick.js';
 
@@ -310,6 +311,87 @@ async function api(req, res, path, url) {
       if (!owner.userId && !owner.deviceId) return json(res, 400, { error: 'no_owner' });
       const out = await restoreStreak(owner, Number(body.tz) || 0, Boolean(body.watched));
       return json(res, out.error ? 400 : 200, out);
+    }
+
+    /* ---------- SolRush Plus ---------- */
+
+    /* Start a purchase. Returns the checkout page to send the player to.
+
+       An account is required, and not for bookkeeping: Maketou needs an email
+       to send a receipt to, and Plus has to survive the player changing phone.
+       A guest is a browser, and a purchase attached to one is a purchase lost
+       the first time the cache is cleared. */
+    case '/api/plus/checkout': {
+      if (!auth) return json(res, 401, { error: 'unauthorized' });
+      if (!plusConfigured()) return json(res, 503, { error: 'payments_off' });
+      if (!rateLimit('buy:' + auth.sub, 10, 600_000)) return json(res, 429, { error: 'slow_down' });
+
+      const user = await userById(auth.sub);
+      if (!user) return json(res, 404, { error: 'no_user' });
+      // Already paid. Charging twice for something sold once is the worst
+      // failure available here, and it costs one query to make impossible.
+      if (user.plus) return json(res, 200, { plus: true });
+
+      try {
+        const origin = process.env.PUBLIC_ORIGIN || `http://${req.headers.host}`;
+        const cart = await createCart({ user, redirectURL: origin + '/plus/done' });
+        await q(
+          `INSERT INTO plus_carts (cart_id, user_id) VALUES ($1, $2)
+             ON CONFLICT (cart_id) DO NOTHING`,
+          [cart.id, user.id],
+        );
+        return json(res, 200, { url: cart.url });
+      } catch (e) {
+        console.error('checkout failed', e.message);
+        return json(res, 502, { error: 'checkout_failed' });
+      }
+    }
+
+    /* Did it go through?
+
+       Called when the player comes back from the checkout page, and again
+       whenever they open the game — because the coming back is exactly the
+       part that goes missing. Every unfinished cart of theirs is re-checked
+       against Maketou, and the ANSWER comes from Maketou, never from the
+       browser: a client that could say "I paid" is a client that will. */
+    case '/api/plus/status': {
+      if (!auth) return json(res, 401, { error: 'unauthorized' });
+      const user = await userById(auth.sub);
+      if (!user) return json(res, 404, { error: 'no_user' });
+      if (user.plus) return json(res, 200, { plus: true });
+      if (!plusConfigured()) return json(res, 200, { plus: false });
+      if (!rateLimit('plusq:' + auth.sub, 30, 60_000)) return json(res, 429, { error: 'slow_down' });
+
+      const open = await q(
+        `SELECT cart_id FROM plus_carts
+          WHERE user_id = $1 AND status = 'waiting_payment'
+          ORDER BY created_at DESC LIMIT 5`, [auth.sub],
+      );
+
+      let paid = false;
+      for (const row of open.rows) {
+        let cart;
+        try { cart = await getCart(row.cart_id); }
+        catch (e) { console.error('cart check failed', e.message); continue; }
+        if (!cart.status) continue;
+
+        /* The cart says whose it is, and it must agree with our table. If it
+           does not, something is wrong enough that nobody gets upgraded: the
+           only way this disagrees is if the wrong cart is being read, and the
+           cost of guessing is granting one person's purchase to another. */
+        if (cart.meta?.userId && String(cart.meta.userId) !== String(auth.sub)) {
+          console.error('cart', row.cart_id, 'belongs to somebody else');
+          continue;
+        }
+
+        await q(`UPDATE plus_carts SET status = $2, checked_at = now() WHERE cart_id = $1`,
+          [row.cart_id, cart.status]);
+        if (cart.status === PAID) {
+          await q(`UPDATE users SET plus = true WHERE id = $1`, [auth.sub]);
+          paid = true;
+        }
+      }
+      return json(res, 200, { plus: paid });
     }
 
     /* ---------- replays ---------- */
