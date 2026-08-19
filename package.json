@@ -20,7 +20,8 @@
     "db:push": "node server/migrate.js",
     "smoke:cos": "node scripts/cosmetics-check.mjs",
     "smoke:stats": "node scripts/stats-check.mjs",
-    "smoke:finish": "node scripts/finish-check.mjs"
+    "smoke:finish": "node scripts/finish-check.mjs",
+    "smoke:fit": "node scripts/fit-check.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1",

@@ -1021,11 +1021,26 @@ html[data-theme="dark"] .legal-links span {
     display: none;
 }
 
+/* The one screen in the game that must never scroll.
+
+   height, not min-height, and overflow hidden with it. A player mid-move
+   cannot be asked to scroll to find the wall dock or the emoji they want, and
+   on a 568px-tall phone that is exactly what happened: the board claimed 55dvh
+   no matter what else was on the screen, so the fixed chrome around it —
+   header, player pills, dock, hint, bottom bar, about 250px of it — pushed the
+   last 97px off the bottom.
+
+   Fixing it is the same idea as any other flex layout: the fixed rows keep
+   their size, and the board takes what is left over. See sizeBoard() in app.js
+   for the measurement, which has to be done in pixels because aspect-ratio
+   under two competing max constraints is not reliable across browsers. */
 #screen-game.active {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-height: 100dvh;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
 }
 
 .game-head {
@@ -1173,10 +1188,20 @@ html[data-theme="dark"] .legal-links span {
 
 .board-wrap {
     position: relative;
-    flex: 1;
+    flex: 1 1 auto;
+    /* Load-bearing. A flex item refuses to shrink below its content without
+       this, so the wrap stayed as tall as the board it contained and the board
+       was sized off the viewport rather than off the space left for it — the
+       two facts that made the screen overflow. */
+    min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
+}
+
+/* The zone labels keep their size; only the board absorbs what is left. */
+.board-wrap > .zone-label {
+    flex: none;
 }
 
 .zone-label {
@@ -1212,10 +1237,14 @@ html[data-theme="dark"] .legal-links span {
 /* board: silver tray with a thin pencil grid */
 #board {
     position: relative;
+    /* width comes from sizeBoard(), in pixels, off the space actually left */
     width: 100%;
     aspect-ratio: 1;
     max-width: min(87vw, 55dvh);
-    margin: 16px auto;
+    flex: none;
+    /* >= the 12px bezel painted by the box-shadow below, or the ring overlaps
+       whatever sits under the board */
+    margin: 12px auto;
     background: linear-gradient(168deg, #fdfdff, #f0f1f8 70%, #e9ebf4);
     border-radius: 14px;
     box-shadow:
@@ -3398,4 +3427,94 @@ html[data-theme="dark"] .rp-btn.rp-play {
 html[data-theme="dark"] .rooms-empty,
 html[data-theme="dark"] .lb-empty {
     color: var(--muted);
+}
+/* ============ short screens ============
+
+   Below about 700px of viewport height the board is squeezed by things that
+   are only helpful the first few times: the gesture hint, generous gaps, a
+   tall wall dock. They are trimmed in that order, because a bigger board is
+   worth more than any of them once a game is under way.
+
+   Nothing is REMOVED, only reduced — except the hint, which says the same
+   thing every game and is the one line a returning player never reads. */
+@media (max-height: 700px) {
+    #screen-game.active {
+        gap: 5px;
+        padding: 8px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+
+    #screen-game .game-hint {
+        display: none;
+    }
+
+    #board {
+        margin: 12px auto;
+    }
+
+    .wall-dock {
+        padding: 6px 12px;
+        margin-top: 0;
+    }
+
+    .zone-label {
+        padding: 2px 6px;
+        font-size: 11px;
+    }
+
+    /* The voice row cost 63px on a 568px phone, because its status line wrapped
+       to a second line — a quarter of the board's remaining budget spent on one
+       sentence. Smaller type keeps it on one line and gives the pixels back. */
+    .voice-row {
+        gap: 6px;
+        margin-top: 4px;
+    }
+
+    .voice-btn {
+        min-height: 34px;
+        padding: 6px 10px;
+        font-size: 11.5px;
+    }
+
+    .voice-peer {
+        font-size: 10.5px;
+        flex-basis: 90px;
+    }
+
+    .emoji-bar button {
+        width: 36px;
+        height: 36px;
+        font-size: 17px;
+    }
+}
+
+/* A phone on its side has barely 360px of height, and the same rows have to
+   fit in half the room. The board is square, so width is never the problem
+   here — every pixel saved vertically goes straight into it. */
+@media (orientation: landscape) and (max-height: 520px) {
+    #screen-game.active {
+        gap: 3px;
+        padding: 4px 10px calc(4px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .game-head {
+        display: none;
+    }
+
+    #screen-game .zone-label {
+        display: none;
+    }
+
+    .vs-row {
+        gap: 6px;
+    }
+
+    .emoji-bar button {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+    }
+
+    .turn-pill {
+        padding: 6px 12px;
+    }
 }

@@ -939,6 +939,100 @@ function dims() {
 }
 function isRace() { return game?.state?.mode === 'race'; }
 
+/* How big can the board be, given what is left after everything else?
+
+   It used to be min(87vw, 55dvh) — a fixed fraction of the VIEWPORT, chosen
+   without reference to the header, the player pills, the wall dock, the hint
+   and the bottom bar that share the screen with it. Those come to roughly
+   250px, so anything shorter than about 740px overflowed and the player had to
+   scroll during their own turn. A friend room, which adds the voice row, was
+   worse.
+
+   So it is measured instead of guessed. .board-wrap is a flex item with
+   min-height:0, which makes its height "whatever the fixed rows left behind" —
+   and, crucially, independent of the board inside it, so there is no circle to
+   resolve here.
+
+   In pixels rather than in CSS because the CSS version of this needs
+   aspect-ratio to honour a max-width and a max-height at once, and browsers do
+   not agree about which one gives way. A number does not have opinions. */
+function boardTargetWidth() {
+    const { cols, rows } = dims();
+    const ratio = (cols * 1.3 + 0.3) / (rows * 1.3 + 0.3);
+    const wrap = board.parentElement;
+
+    /* Room left after the siblings that are actually IN the column.
+
+       Position matters here and skipping the check cost an hour. In race mode
+       the "finish" band is absolutely positioned across the board, so it
+       reports the full height of the wrapper while occupying none of it —
+       subtracting it drove the budget negative, the guard below read that as
+       "nothing to measure yet", and the board fell back to the viewport
+       fraction this function exists to replace. It then overflowed its wrapper
+       and was drawn straight over the player pills. The emoji pop-up is
+       absolute for the same reason. */
+    let availH = wrap.clientHeight;
+    for (const el of wrap.children) {
+        if (el === board || el.hidden || !el.offsetHeight) continue;
+        const pos = getComputedStyle(el).position;
+        if (pos === 'absolute' || pos === 'fixed') continue;
+        availH -= el.offsetHeight;
+    }
+
+    /* The board's own margins, which offsetHeight does not include and which
+       are not decoration here: the board is drawn with a 12px bezel painted as
+       a box-shadow, so it occupies more room than it measures. Give it exactly
+       its wrapper's height and that ring lands on top of the zone label
+       underneath — which is what happened, and looked like a layout bug in the
+       label rather than in the board. */
+    const cs = getComputedStyle(board);
+    availH -= parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
+    const availW = wrap.clientWidth;
+
+    /* Before the screen is shown there is nothing to measure, and 0 would make
+       the board vanish. The old viewport fractions are the honest fallback. */
+    if (availH <= 40 || availW <= 40) {
+        board.style.maxWidth = isRace() ? 'min(80vw, 46dvh)' : 'min(87vw, 55dvh)';
+        board.style.width = '';
+        return 0;
+    }
+
+    return Math.floor(Math.min(availW * 0.98, availH * ratio));
+}
+
+function sizeBoard() {
+    const w = boardTargetWidth();
+    if (!w) return;                     // fallback already applied
+    board.style.maxWidth = 'none';
+    board.style.width = w + 'px';
+}
+
+/* Refit whenever the space actually changes, not only on a window resize.
+
+   The window is not the only thing that moves. The voice status line wraps to a
+   second line the moment a friend joins the call, mobile browsers slide their
+   own toolbar in and out as you touch the page, and the safe area changes when
+   a phone is rotated. Each of those quietly takes fifteen or twenty pixels from
+   the board's budget, and a board sized once at the start would spill them off
+   the bottom of a screen that is supposed to never scroll.
+
+   There is no feedback loop to fear: the wrap's height comes from the rows
+   AROUND the board, so changing the board's width cannot change what it is
+   measured against. The guard below is against churn, not recursion. */
+let fitWatcher = null;
+function watchBoardFit() {
+    if (fitWatcher || typeof ResizeObserver === 'undefined') return;
+    fitWatcher = new ResizeObserver(() => {
+        if (!game || currentScreen !== 'screen-game') return;
+        const want = boardTargetWidth();
+        if (!want || Math.abs(want - board.clientWidth) < 2) return;
+        buildBoard();
+        cancelWallPreview();
+        renderGame();
+    });
+    fitWatcher.observe(board.parentElement);
+}
+
 function computeGeo() {
     const { cols, rows } = dims();
     // cells are 1u, grooves and padding 0.3u → total width in units:
@@ -982,7 +1076,8 @@ function buildBoard() {
     const { cols, rows } = dims();
     // race board is taller than wide — cap width so the whole board fits on screen
     board.style.aspectRatio = `${cols * 1.3 + 0.3} / ${rows * 1.3 + 0.3}`;
-    board.style.maxWidth = isRace() ? 'min(80vw, 46dvh)' : 'min(87vw, 55dvh)';
+    sizeBoard();
+    watchBoardFit();
     computeGeo();
     board.innerHTML = '';
     cellEls = [];
