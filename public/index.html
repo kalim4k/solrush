@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
 
 <head>
     <meta charset="UTF-8">
@@ -11,6 +11,27 @@
          their zoom. -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#f4f4fb">
+
+    <!-- No machine translation, please.
+
+         This app already speaks six languages, chosen from the language pack
+         the visitor's own browser asked for, and app.js keeps
+         document.documentElement.lang in step with whichever one is showing.
+         A browser that translates on top of that is not helping: it replaces
+         hand-written wording with a machine's guess at wording that was
+         already correct, and it does it to a live interface — button labels
+         change width mid-game, the wall dock's numbers get "translated", and
+         nicknames other players chose are rewritten.
+
+         translate="no" on <html> is the standard opt-out and is what Chrome,
+         Edge and Firefox read. The meta tag below is Google's older form of
+         the same instruction, kept because their tooling still looks for it,
+         and class="notranslate" is the third form, for the Translate widget.
+
+         This suppresses the automatic offer. It cannot stop somebody who
+         deliberately picks "Translate page" from a menu, and it should not:
+         that is their choice to make. -->
+    <meta name="google" content="notranslate">
 
     <!-- ============ how this page gets found ============
        Everything a crawler is handed lives in the next forty lines, because
@@ -113,7 +134,7 @@
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
         crossorigin="anonymous"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=143">
+    <link rel="stylesheet" href="css/style.css?v=144">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -820,7 +841,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="js/app.js?v=143"></script>
+    <script type="module" src="js/app.js?v=144"></script>
 </body>
 
 </html>

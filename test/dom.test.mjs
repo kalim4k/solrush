@@ -122,3 +122,61 @@ test('the page carries real text for a crawler that does not run scripts', () =>
   const text = about[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   assert.ok(text.length > 200, 'the about paragraph is too short to be useful');
 });
+
+/* Machine translation is refused, and it has to stay refused.
+
+   This app already speaks six languages and switches document.documentElement
+   .lang to whichever one is showing. A browser translating on top of that
+   rewrites correct wording as a guess at correct wording, live, in an
+   interface where labels change width mid-game and other players' nicknames
+   get "translated".
+
+   The symptom only appears for someone whose browser language differs from
+   the page's, so nothing but this test stands between the next edit to <head>
+   and a silently mangled UI for exactly the players it was written for. */
+test('the page opts out of automatic browser translation', () => {
+  const openTag = html.match(/<html\b[^>]*>/)[0];
+  assert.match(openTag, /\btranslate="no"/, '<html> is missing translate="no"');
+  assert.match(openTag, /\bclass="[^"]*\bnotranslate\b/, '<html> is missing class="notranslate"');
+  assert.match(html, /<meta\s+name="google"\s+content="notranslate">/,
+    'the <meta name="google" content="notranslate"> hint is gone');
+});
+
+test('the language shown is the language the document declares', () => {
+  // Chrome offers to translate when it thinks the page is in a language other
+  // than the reader's. Leaving lang="en" pinned while the UI renders in French
+  // is what makes that offer appear in the first place, so the opt-out above
+  // is the belt and this is the braces.
+  assert.match(app, /document\.documentElement\.lang\s*=\s*lang/,
+    'app.js no longer keeps <html lang> in step with the chosen language');
+});
+
+/* The badge sits beside the nickname by layout, not by a nudge.
+
+   It was an inline span with vertical-align: -.05em, which aligns it to the
+   text BASELINE — the wrong reference for an emoji, whose visual middle sits
+   well above its baseline. The badge hung low next to the name, and worse the
+   bolder and larger the name got, so it looked wrong on the profile heading
+   and in the player pills at once. Nudging the number only moves which font
+   size is wrong.
+
+   Two boxes centred against each other need no number and hold at every size.
+   This pins the shape that makes that possible: a nickname element of its own,
+   so a flex row has something to align and something to truncate. */
+test('the badge is centred by layout rather than by a magic offset', () => {
+  const css = readFileSync(join(ROOT, 'public/css/style.css'), 'utf8');
+
+  assert.match(app, /className = 'nick-text'/,
+    'setNickWithBadge no longer gives the nickname its own element');
+  assert.match(app, /classList\.add\('nick-line'\)/,
+    'the nickname line is no longer marked for the layout rule');
+
+  const rule = css.match(/\.nick-line\s*\{[^}]*\}/);
+  assert.ok(rule, '.nick-line is missing from the stylesheet');
+  assert.match(rule[0], /align-items:\s*center/, '.nick-line no longer centres its children');
+
+  const badge = css.match(/^\.badge\s*\{[^}]*\}/m);
+  assert.ok(badge, '.badge is missing from the stylesheet');
+  assert.doesNotMatch(badge[0], /vertical-align/,
+    '.badge is back to aligning itself against the text baseline');
+});

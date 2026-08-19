@@ -1450,12 +1450,45 @@ html[data-theme="dark"] .legal-links span {
    Sit beside a nickname wherever one is shown. Emoji rather than images: they
    need no asset, no colour work for dark mode, and they are the one thing on
    the page guaranteed to render on a five-year-old Android. */
+/* A nickname line: the badge, then the name, centred against each other.
+
+   This used to be an inline span with vertical-align: -.05em, which lines the
+   badge up with the text BASELINE. That is the wrong reference for an emoji —
+   its glyph is drawn from well above the baseline to slightly below it, so its
+   visual middle sits lower than the middle of the letters beside it, and the
+   badge appeared to hang off the name. Nudging the number only trades one
+   size's misalignment for another's, because the gap scales with the font.
+
+   Centring two boxes needs no numbers and holds at every size: 14px in a
+   player pill, 1.3rem on the profile, and whatever the leaderboard uses. */
+.nick-line {
+    display: flex;
+    align-items: center;
+    gap: .3em;
+    min-width: 0;
+}
+
+/* The profile heading is centred text; as a flex row it needs saying again. */
+#profile-nick.nick-line {
+    justify-content: center;
+}
+
+.nick-line .badge {
+    flex: none;
+}
+
+/* Truncation belongs to the element holding the name — a flex container cannot
+   put an ellipsis on a bare text node, which is why the name got its own span. */
+.nick-line .nick-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .badge {
-    display: inline-block;
-    margin-inline-end: .3em;
     font-size: .95em;
     line-height: 1;
-    vertical-align: -.05em;
 }
 
 /* The profile avatar doubles as a preview of the pawn, so it has to accept a
@@ -2737,11 +2770,10 @@ html[data-theme="dark"] .btn-restore {
     min-width: 0;
 }
 
+/* Layout and truncation both come from .nick-line / .nick-text now. Leaving
+   display:block here would win on specificity and quietly undo the row. */
 .lb-nick .lb-name {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: 0;
 }
 
 .lb-nick .lb-badge {

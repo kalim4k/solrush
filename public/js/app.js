@@ -1151,9 +1151,21 @@ function paintChipBall(el, skin, pixel, seat) {
 
 /* A nickname with its owner's badge in front. Built from nodes rather than a
    template string: the nickname is chosen by another player and arrives over
-   the socket, so it goes in as text and never as markup. */
+   the socket, so it goes in as text and never as markup.
+
+   The nickname gets its own element rather than being a bare text node, and
+   that is what makes the badge sit straight. Before, the badge was an inline
+   span nudged with vertical-align, which aligns it to the TEXT BASELINE — and
+   an emoji's baseline is not where its visual middle is, so the crown hung
+   low beside the name at every size and looked worse the bolder the name got.
+   Two elements can be centred against each other by the layout instead of by a
+   magic number; a bare text node cannot.
+
+   It also keeps the ellipsis working. In a flex row the truncation has to
+   belong to the element holding the text, and there was no such element. */
 function setNickWithBadge(el, nick, badge) {
     el.textContent = '';
+    el.classList.add('nick-line');
     const glyph = BADGE_GLYPH[badge] || '';
     if (glyph) {
         const b = document.createElement('span');
@@ -1161,7 +1173,10 @@ function setNickWithBadge(el, nick, badge) {
         b.textContent = glyph;
         el.appendChild(b);
     }
-    el.appendChild(document.createTextNode(String(nick ?? '')));
+    const name = document.createElement('span');
+    name.className = 'nick-text';
+    name.textContent = String(nick ?? '');
+    el.appendChild(name);
 }
 
 /* A pawn wears the skin its owner chose, and falls back to its seat colour —
