@@ -1402,7 +1402,6 @@ function submitMove(move) {
         // optimistic apply for snappy UI; server state will overwrite
         const copy = cloneState(game.state);
         if (applyMove(copy, move)) {
-            if (move.type === 'wall') copy.walls[copy.walls.length - 1].by = game.myIndex;
             game.state = copy;
             renderGame();
         }
@@ -1410,7 +1409,6 @@ function submitMove(move) {
         const s = game.state;
         if (!applyMove(s, move)) return;
         notePos(s);
-        if (move.type === 'wall') s.walls[s.walls.length - 1].by = game.myIndex;
         recordSnapshot(s);
         renderGame();
         if (s.winner !== null) { onGameOver(s.winner === game.myIndex, 'goal'); return; }
@@ -1444,7 +1442,6 @@ function scheduleAiMove() {
             if (!game || game.mode !== 'ai' || game.over) return;
             if (applyMove(s, move)) {
                 notePos(s);
-                if (move.type === 'wall') s.walls[s.walls.length - 1].by = 1 - game.myIndex;
                 recordSnapshot(s);
                 renderGame();
                 vibrate(10);
@@ -1974,8 +1971,13 @@ function updateProfileUI() {
     $('theme-toggle').checked = localStorage.getItem('wr_theme') === 'dark';
     const logged = Boolean(session && profile);
     $('guest-hint').hidden = logged;
-    $('auth-buttons').hidden = logged; // always visible for guests, even if auth is broken —
-    // tapping then explains WHY it is unavailable
+    /* Visible for every guest, even when auth is broken — tapping then explains
+       WHY it is unavailable. But not while the form they open is on screen:
+       openAuthForm() hides them and updateProfileUI() runs on half a dozen
+       unrelated events, each of which put them straight back. Below the fold
+       that was merely untidy; at the top of the screen it is two "Create an
+       account" buttons stacked on top of each other. */
+    $('auth-buttons').hidden = logged || !$('auth-form').hidden;
     $('logged-box').hidden = !logged;
     $('vibro-toggle').checked = vibroOn;
     $('sound-toggle').checked = soundOn;

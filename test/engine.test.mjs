@@ -102,6 +102,29 @@ test('malformed wall coordinates are rejected', () => {
   assert.equal(s.walls.length, 0);
 });
 
+/* Whose wall is it?
+
+   This is a rule, not decoration. A player reads the board by seeing which
+   walls are theirs, and the board can only paint them if the engine says who
+   put them there. It did not: applyMove pushed { r, c, o } and the owner was
+   patched on afterwards by the client, for its own moves only — so an online
+   game, whose walls come from the server's copy of this same engine, drew every
+   wall in the unowned dark grey and neither player could tell them apart. */
+test('a wall records who placed it', () => {
+  const s = initialState('duel');
+  assert.equal(s.turn, 0);
+  assert.equal(applyMove(s, { type: 'wall', r: 3, c: 3, o: 'h' }), true);
+  assert.equal(s.walls[0].by, 0, 'seat 0 placed the first wall');
+
+  assert.equal(s.turn, 1);
+  assert.equal(applyMove(s, { type: 'wall', r: 5, c: 5, o: 'v' }), true);
+  assert.equal(s.walls[1].by, 1, 'seat 1 placed the second');
+
+  // and it has to survive the copy the server sends and the replay stores
+  const copy = cloneState(s);
+  assert.deepEqual(copy.walls.map(w => w.by), [0, 1]);
+});
+
 test('reaching the goal row ends the game', () => {
   const s = initialState('duel');
   s.pawns[0] = { r: 1, c: 4 };

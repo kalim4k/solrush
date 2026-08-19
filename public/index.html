@@ -113,7 +113,7 @@
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
         crossorigin="anonymous"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=140">
+    <link rel="stylesheet" href="css/style.css?v=142">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -623,6 +623,34 @@
                 <h2 data-i18n="profile_title"></h2>
             </header>
 
+            <!-- Signing up comes FIRST, and only for a guest.
+
+                 These sat below the profile card, below the stats and below the
+                 whole appearance picker — three screens of scrolling past
+                 things that are empty or locked precisely because the visitor
+                 has no account. Somebody arriving here to register had to scroll
+                 past the reasons to register in order to find the button.
+
+                 The logout button deliberately did NOT move: it stays at the
+                 bottom with the settings, because it is the one control on this
+                 screen nobody should reach by accident. -->
+            <div id="auth-buttons" class="auth-box">
+                <button class="btn-big" id="btn-show-login" data-i18n="login"></button>
+                <button class="btn-big btn-outline" id="btn-show-register" data-i18n="register"></button>
+            </div>
+
+            <div id="auth-form" class="auth-box" hidden>
+                <input class="input" id="auth-email" type="email" data-i18n-ph="email" autocomplete="email">
+                <input class="input" id="auth-password" type="password" data-i18n-ph="password"
+                    autocomplete="current-password">
+                <input class="input" id="auth-nick" data-i18n-ph="nick_label" maxlength="16" hidden>
+                <button class="btn-big" id="btn-auth-submit"></button>
+                <button class="btn-link" id="btn-auth-toggle"></button>
+                <button class="btn-link" id="btn-forgot" data-i18n="forgot"></button>
+                <button class="btn-link" id="btn-auth-cancel" data-i18n="cancel"></button>
+                <p class="auth-msg" id="auth-msg" hidden></p>
+            </div>
+
             <div class="profile-card">
                 <div class="avatar" id="profile-avatar">U</div>
                 <h3 id="profile-nick">User0000</h3>
@@ -694,25 +722,6 @@
                 <h4 class="cos-sub" data-i18n="finish_title"></h4>
                 <div class="cos-grid" id="finish-grid"></div>
                 <p class="hint" data-i18n="finish_hint"></p>
-            </div>
-
-            <!-- guest: auth buttons -->
-            <div id="auth-buttons" class="auth-box">
-                <button class="btn-big" id="btn-show-login" data-i18n="login"></button>
-                <button class="btn-big btn-outline" id="btn-show-register" data-i18n="register"></button>
-            </div>
-
-            <!-- auth form -->
-            <div id="auth-form" class="auth-box" hidden>
-                <input class="input" id="auth-email" type="email" data-i18n-ph="email" autocomplete="email">
-                <input class="input" id="auth-password" type="password" data-i18n-ph="password"
-                    autocomplete="current-password">
-                <input class="input" id="auth-nick" data-i18n-ph="nick_label" maxlength="16" hidden>
-                <button class="btn-big" id="btn-auth-submit"></button>
-                <button class="btn-link" id="btn-auth-toggle"></button>
-                <button class="btn-link" id="btn-forgot" data-i18n="forgot"></button>
-                <button class="btn-link" id="btn-auth-cancel" data-i18n="cancel"></button>
-                <p class="auth-msg" id="auth-msg" hidden></p>
             </div>
 
             <div id="logged-box" class="auth-box" hidden>
@@ -805,7 +814,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="js/app.js?v=140"></script>
+    <script type="module" src="js/app.js?v=142"></script>
 </body>
 
 </html>

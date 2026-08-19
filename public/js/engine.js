@@ -269,7 +269,20 @@ export function applyMove(state, move) {
       return true;
     }
   } else if (move.type === 'wall') {
-    const w = { r: move.r, c: move.c, o: move.o };
+    /* `by` is who placed it, and it belongs here rather than anywhere else.
+
+       The board paints each wall in its owner's colour, which is the only way
+       to read whose walls are whose — and the engine used to push { r, c, o }
+       with no owner at all. The client patched the field on after applyMove for
+       its own moves, so a wall looked right for the instant before the server's
+       authoritative state replaced it; every wall in an online game then fell
+       back to the unowned dark grey, which reads as black. The rendering was
+       correct the whole time and had nothing to render.
+
+       The engine is the only place that knows: `p` is whose turn it is at the
+       moment the wall goes down. Both the browser and the server run this file,
+       so recording it once fixes both. */
+    const w = { r: move.r, c: move.c, o: move.o, by: p };
     if (!canPlaceWall(state, p, w)) return false;
     state.walls.push(w);
     state.left[p]--;
