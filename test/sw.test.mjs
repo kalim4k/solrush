@@ -87,3 +87,29 @@ test('index.html is valid UTF-8 with no byte-order mark', () => {
   assert.doesNotMatch(html, /[Â-Ã][-¿]/,
     'index.html contains mojibake (UTF-8 read as Windows-1252)');
 });
+
+/* A navigation is not always the game.
+
+   Every navigate response used to be stored under "/index.html", the key the
+   offline fallback reads. The rules pages are real documents at their own
+   addresses, so a player who read them once, online, had their offline shell
+   quietly replaced by a page of prose — and the next time they opened the game
+   without a signal there was no board on it. Nothing in a clean profile shows
+   this, and it only became reachable when the footer started linking to those
+   documents at all. */
+test('only the game shell is stored as the game shell', () => {
+  const nav = sw.slice(sw.indexOf("req.mode === 'navigate'"));
+  const put = nav.slice(0, nav.indexOf('freshFirst'));
+  assert.match(put, /if\s*\(\s*shell[^)]*\)/,
+    'the navigate branch must decide whether the response IS the shell before caching it as one');
+  assert.match(sw, /const DOCS = .+rules.+regles/,
+    'the standalone documents have to be named somewhere for that decision to be possible');
+});
+
+test('the standalone rules pages are reachable from the game', () => {
+  // Orphaned pages are crawled as an afterthought and found by no player. These
+  // two are the only documents on the site that can be read without running any
+  // script, which is the whole reason they exist.
+  assert.match(html, /<a[^>]*data-legal="rules"[^>]*href="\/rules\/"/,
+    'the footer Rules link must carry a real address, not just an overlay handler');
+});

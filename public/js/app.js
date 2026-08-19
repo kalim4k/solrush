@@ -399,6 +399,11 @@ function applyI18n() {
     document.documentElement.lang = lang;
     document.documentElement.dir = RTL.has(lang) ? 'rtl' : 'ltr';
     document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    // The standalone rules document exists in two languages, not six. French
+    // players get the French one; everyone else gets English, which is what the
+    // page itself offers as x-default.
+    const rulesDoc = document.querySelector('.legal-links a[data-legal="rules"]');
+    if (rulesDoc) rulesDoc.href = lang === 'fr' ? '/regles/' : '/rules/';
     document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
     const cur = LANGS.find(l => l.code === lang) || LANGS[0];
     $('btn-lang').textContent = cur.flag + ' ' + cur.code.toUpperCase();
@@ -3010,7 +3015,11 @@ function renderDoc(target, text) {
 const DOC_UPDATED = '2026-08-17';
 
 document.querySelectorAll('.legal-links a[data-legal]').forEach(a =>
-    a.addEventListener('click', () => {
+    a.addEventListener('click', (e) => {
+        // Rules carries a real href. In a browser the overlay wins: it is
+        // translated into the language being played in, and it does not throw
+        // the player out of a game to read a paragraph.
+        e.preventDefault();
         const p = a.dataset.legal; // rules | help | terms | privacy
         $('legal-title').textContent = t(p + '_title');
         renderDoc($('legal-text'), t(p + '_body'));

@@ -4,7 +4,10 @@
 // Bump CACHE whenever the shell changes. The old cache is deleted on activate,
 // so a stale engine.js can never be paired with a fresh app.js — which is the
 // failure mode that produces bug reports nobody can reproduce.
-const CACHE = 'solrush-v12';
+const CACHE = 'solrush-v13';
+
+// Addresses that are documents in their own right rather than the game shell.
+const DOCS = /^\/(rules|regles)\/?$/;
 
 const SHELL = [
   '/',
@@ -86,14 +89,25 @@ self.addEventListener('fetch', (e) => {
   // Network first for the shell document, so a deploy is picked up immediately;
   // cache is the fallback for the tunnel/lift case.
   if (req.mode === 'navigate') {
+    /* Not every navigation is the game. The rules pages are real documents at
+       their own addresses, and the old code stored whatever came back under
+       "/index.html" — so a player who read the rules once, online, had their
+       offline shell replaced by them, and opening the game in a lift showed a
+       page of prose with no board on it. Only the shell may be saved as the
+       shell, and only when the server actually answered. */
+    const shell = !DOCS.test(url.pathname);
     e.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put('/index.html', copy));
+          if (shell && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put('/index.html', copy));
+          }
           return res;
         })
-        .catch(() => caches.match('/index.html')),
+        // Offline on a document we never stored, the game is a better answer
+        // than the browser's error page.
+        .catch(() => caches.match(req).then((hit) => hit || caches.match('/index.html'))),
     );
     return;
   }

@@ -134,7 +134,7 @@
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
         crossorigin="anonymous"></script>
 
-    <link rel="stylesheet" href="css/style.css?v=144">
+    <link rel="stylesheet" href="css/style.css?v=145">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -222,7 +222,15 @@
                  from somewhere, and this is the only footer there is. -->
             <div class="footer-block">
                 <nav class="legal-links">
-                    <a data-legal="rules" data-i18n="legal_rules">Rules</a><span>·</span>
+                    <!-- A real href, not a decorated span. Clicking it opens the
+                         overlay, which speaks all six languages; the address is
+                         there for everything a click is not — a crawler, an
+                         open-in-new-tab, a shared link. Until now nothing in the
+                         site pointed at /rules/ at all, so the one document a
+                         search engine can read without running scripts was
+                         unreachable except through the sitemap. applyI18n swaps
+                         it for /regles/ when the game is in French. -->
+                    <a data-legal="rules" href="/rules/" data-i18n="legal_rules">Rules</a><span>·</span>
                     <a data-legal="help" data-i18n="legal_help">Help</a><span>·</span>
                     <a data-legal="terms" data-i18n="legal_terms">Terms</a><span>·</span>
                     <a data-legal="privacy" data-i18n="legal_privacy">Privacy</a>
@@ -841,7 +849,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="js/app.js?v=144"></script>
+    <script type="module" src="js/app.js?v=145"></script>
 </body>
 
 </html>
