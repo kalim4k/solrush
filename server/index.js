@@ -34,6 +34,31 @@ import { checkNick, randomNick } from '../public/js/nick.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const PUBLIC = join(ROOT, 'public');
+
+/* Where this game actually lives.
+
+   Render serves the same application on <service>.onrender.com AND on the
+   custom domain, so the Host header of an incoming request says which address
+   somebody happened to arrive at — not which one is ours. Building a
+   return-from-payment URL out of it sent a player who had just paid back to
+   solrush.onrender.com, a different origin, with a different localStorage, and
+   therefore no session: they appeared logged out, on an account that did not
+   have the Plus they had just bought. It was only recoverable because the
+   status check re-asks on the real domain.
+
+   PUBLIC_ORIGIN is still what should be set. This is what stops the wrong
+   answer when it is not. */
+const CANONICAL_ORIGIN = 'https://solrush.site';
+
+function publicOrigin(req) {
+  const set = (process.env.PUBLIC_ORIGIN || '').trim().replace(/\/+$/, '');
+  if (set) return set;
+  const host = req?.headers?.host || '';
+  // Development answers on localhost and must stay there, or every local test
+  // of a payment redirect would leave for production.
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host)) return 'http://' + host;
+  return CANONICAL_ORIGIN;
+}
 const PORT = Number(process.env.PORT) || 3000;
 
 /* ICE servers for the voice call in friend rooms.
@@ -273,7 +298,7 @@ async function api(req, res, path, url) {
       const token = await startReset(body.email);
       // Always the same answer, whether or not the address exists — otherwise
       // this endpoint is a free tool for checking who has an account here.
-      const link = token ? `${process.env.PUBLIC_ORIGIN || ''}/?reset=${token}` : null;
+      const link = token ? `${publicOrigin(req)}/?reset=${token}` : null;
       if (link && process.env.RESEND_API_KEY) {
         await sendResetMail(body.email, link).catch(e => console.error('mail failed', e.message));
         return json(res, 200, { sent: true });
@@ -333,8 +358,9 @@ async function api(req, res, path, url) {
       if (user.plus) return json(res, 200, { plus: true });
 
       try {
-        const origin = process.env.PUBLIC_ORIGIN || `http://${req.headers.host}`;
-        const cart = await createCart({ user, redirectURL: origin + '/plus/done' });
+        const cart = await createCart({
+          user, redirectURL: publicOrigin(req) + '/plus/done',
+        });
         await q(
           `INSERT INTO plus_carts (cart_id, user_id) VALUES ($1, $2)
              ON CONFLICT (cart_id) DO NOTHING`,

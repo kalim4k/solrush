@@ -3788,3 +3788,33 @@ html[data-theme="dark"] .lb-empty {
         opacity: .5;
     }
 }
+
+/* The thank-you dialog. Same shape as the offer it replaces, so the two read
+   as one conversation that ended well. */
+.thanks-modal .plus-lede {
+    margin-bottom: 10px;
+}
+
+.thanks-note {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(47, 109, 246, .08);
+    color: var(--muted);
+    font-size: .87rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .thanks-note {
+        background: rgba(91, 140, 255, .12);
+    }
+}
+
+/* The confetti box is absolutely positioned inside its overlay, so a second one
+   needs the same treatment or it takes up room and pushes the dialog down. */
+#confetti-thanks {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}

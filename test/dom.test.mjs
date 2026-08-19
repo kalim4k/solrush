@@ -296,3 +296,45 @@ test('the spinner animates only transform', () => {
       `@keyframes btn-spin animates "${p}", which is not compositor-only`);
   }
 });
+
+/* A payment must always come back to one address.
+
+   Render serves this app on <service>.onrender.com as well as on the custom
+   domain, so the Host header says where a request arrived, not where we live.
+   Building the return URL from it sent a player who had just paid to the other
+   origin — a different localStorage, so no session, so an account that did not
+   have the Plus they had just bought. */
+test('the return-from-payment URL does not come from the request host', () => {
+  const server = readFileSync(join(ROOT, 'server/index.js'), 'utf8');
+  assert.match(server, /const CANONICAL_ORIGIN = /,
+    'there has to be one address that is ours regardless of how a request arrived');
+
+  const fn = server.slice(server.indexOf('function publicOrigin'));
+  const body = fn.slice(0, fn.indexOf('\n}') + 2);
+  assert.match(body, /PUBLIC_ORIGIN/, 'the configured origin still wins');
+  assert.match(body, /CANONICAL_ORIGIN/, 'and it falls back to ours, not to the caller’s host');
+
+  // The old shape, which is the bug: interpolating the Host straight into a URL.
+  assert.doesNotMatch(server, /https?:\/\/\$\{req\.headers\.host\}/,
+    'no outbound URL may be built from the request host');
+});
+
+/* Somebody has just paid. A toast that fades in two and a half seconds is not
+   an acknowledgement — and it is the moment most likely to be missed, because
+   the payment often lands while they are still switching back from a banking
+   app. */
+test('a completed purchase is acknowledged, once', () => {
+  const html = readFileSync(join(ROOT, 'public/index.html'), 'utf8');
+  assert.match(html, /id="overlay-thanks"/, 'there is a dialog to thank them with');
+  assert.match(html, /id="confetti-thanks"/,
+    'with its own confetti box — the original lives inside the game-over overlay, '
+    + 'and filling that one while this dialog is open produces confetti nobody sees');
+
+  const app = readFileSync(join(ROOT, 'public/js/app.js'), 'utf8');
+  const fn = app.slice(app.indexOf('function afterPlus'));
+  const body = fn.slice(0, fn.indexOf("$('thanks-go')"));
+  assert.match(body, /wr_thanked/,
+    'shown once: checkPlus runs on every boot, so without a flag it greets them forever');
+  assert.match(body, /renderCosmetics\(\)/, 'the locked swatches have to unlock');
+  assert.match(body, /updateProfileUI\(\)/, 'and the offer banner has to go away');
+});

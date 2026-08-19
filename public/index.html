@@ -149,7 +149,7 @@
          behind the WR_EMBED check below, because every portal that embeds this
          game forbids running our ads inside theirs. -->
 
-    <link rel="stylesheet" href="/css/style.css?v=151">
+    <link rel="stylesheet" href="/css/style.css?v=152">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -357,6 +357,26 @@
                 <div class="modal-buttons">
                     <button class="btn-big" id="plus-buy" data-i18n="plus_buy"></button>
                     <button class="btn-link" id="plus-close" data-i18n="plus_later"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ THANK YOU (overlay) ============
+
+             Somebody has just paid. A toast that fades after two and a half
+             seconds is not an acknowledgement of that — and it is the moment
+             most likely to be interrupted, because the payment may well land
+             while they are still switching back from their banking app. This
+             waits for them. -->
+        <div class="overlay" id="overlay-thanks" hidden>
+            <div class="confetti" id="confetti-thanks"></div>
+            <div class="modal plus-modal thanks-modal">
+                <div class="plus-crown">👑</div>
+                <h2 data-i18n="thanks_title"></h2>
+                <p class="plus-lede" data-i18n="thanks_lede"></p>
+                <p class="thanks-note" data-i18n="thanks_forever"></p>
+                <div class="modal-buttons">
+                    <button class="btn-big" id="thanks-go" data-i18n="thanks_go"></button>
                 </div>
             </div>
         </div>
@@ -939,7 +959,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="/js/app.js?v=151"></script>
+    <script type="module" src="/js/app.js?v=152"></script>
 </body>
 
 </html>

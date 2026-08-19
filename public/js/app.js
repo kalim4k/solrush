@@ -1789,8 +1789,12 @@ function showAward() {
     }
 }
 
-function spawnConfetti(on) {
-    const box = $('confetti');
+/* The container is a parameter because there are now two of them, and the
+   original lives INSIDE the game-over overlay — filling that one while the
+   thank-you dialog is open produces confetti nobody can see. */
+function spawnConfetti(on, boxId = 'confetti') {
+    const box = $(boxId);
+    if (!box) return;
     box.innerHTML = '';
     if (!on) return;
     const colors = ['#2f6df6', '#ffb340', '#ff5c7a', '#21c07a', '#9b7bff', '#ff8a5c'];
@@ -2566,13 +2570,36 @@ async function startPurchase() {
     } catch { busy(false); toast(t('offline_bar')); }
 }
 
+/* Everything that has to change the moment an account gains Plus.
+
+   Called from three places — a purchase completing, the check on return from
+   checkout, and the check on any later reconnection — so all three produce the
+   same result. A player who bought on their phone and opened the game on a
+   laptop gets the same welcome as the one who never left the tab. */
 function afterPlus() {
     $('overlay-plus').hidden = true;
-    renderCosmetics();
-    updateProfileUI();
-    loadMyGames();
-    toast(t('plus_thanks'));
+    renderCosmetics();     // the locked swatches are not locked any more
+    updateProfileUI();     // and the offer banner takes itself away
+    loadMyGames();         // the games list exists for this account now
+
+    /* Shown once. `wr_thanked` is what stops it reappearing on every reload —
+       checkPlus() runs on each boot, and without this the celebration would
+       greet somebody every single time they opened the game. */
+    if (localStorage.getItem('wr_thanked')) return;
+    localStorage.setItem('wr_thanked', '1');
+    $('overlay-thanks').hidden = false;
+    spawnConfetti(true, 'confetti-thanks');
+    victorySound(resolvePack(myPack, myPlus));
 }
+
+$('thanks-go').addEventListener('click', () => {
+    $('overlay-thanks').hidden = true;
+    spawnConfetti(false, 'confetti-thanks');
+    // Straight to the thing they just bought, rather than back to wherever
+    // they happened to be standing.
+    show('screen-profile');
+    $('skin-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
 
 /* Did the payment land?
 
