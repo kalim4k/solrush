@@ -77,6 +77,18 @@ function splitNick(nick) {
 
 export async function createCart({ user, redirectURL }) {
   const { firstName, lastName } = splitNick(user.nick);
+
+  /* Only for a pay-what-you-want product, which is what the Maketou API calls
+     one with no price of its own — it refuses every cart until it is told an
+     amount. A fixed-price product needs none of this and MAKETOU_PRICE stays
+     unset, which is the arrangement to prefer: the amount then exists once, in
+     the Maketou dashboard, instead of once there and once here.
+
+     Sent by the server either way. The amount must never come from the browser
+     on a product whose price is open — that is a shop where the customer fills
+     in the total. */
+  const price = Number(process.env.MAKETOU_PRICE) || 0;
+
   const out = await call('/api/v1/stores/cart/checkout', {
     method: 'POST',
     body: {
@@ -85,6 +97,7 @@ export async function createCart({ user, redirectURL }) {
       firstName,
       lastName,
       redirectURL,
+      ...(price > 0 ? { customerPrice: price } : {}),
       /* Values must be strings. This is a second, independent way to tell whose
          payment a cart is — the first being our own table. Belt and braces on
          the one operation where getting the person wrong means somebody paid

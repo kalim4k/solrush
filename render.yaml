@@ -60,6 +60,10 @@ services:
         sync: false
       - key: MAKETOU_PRODUCT_ID
         sync: false
+      # Only while the product is priced "pay what you want"; a fixed-price
+      # product needs no amount here.
+      - key: MAKETOU_PRICE
+        sync: false
 
       # Optional: TURN relay for voice in friend rooms. Without it, voice still
       # works for most pairs and fails cleanly for the rest.
