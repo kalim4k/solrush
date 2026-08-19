@@ -180,3 +180,18 @@ test('the badge is centred by layout rather than by a magic offset', () => {
   assert.doesNotMatch(badge[0], /vertical-align/,
     '.badge is back to aligning itself against the text baseline');
 });
+
+/* AdSense refused solrush.site on 2026-08-19: "Google-served ads on screens
+   without publisher content". The loader was in the head of the app shell — a
+   page that, with the tags stripped, holds one paragraph of prose and a
+   hundred-odd words of button labels, followed by a game board. The policy
+   names that case directly ("screens that serve navigation or other
+   behavioural purposes"), and leaving the tag there also lets Auto Ads place
+   units inside the interface, mid-game.
+
+   The tag belongs on documents, not on the app. This keeps it off. */
+test('the game shell does not ask for ads', () => {
+  const html = readFileSync(join(ROOT, 'public/index.html'), 'utf8');
+  assert.doesNotMatch(html, /adsbygoogle|pagead2\.googlesyndication/,
+    'no ad loader on a screen whose content is a menu and a board');
+});

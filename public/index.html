@@ -118,21 +118,26 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="manifest" href="manifest.json">
 
-    <!-- Google AdSense (pub-8332061475038084).
+    <!-- No AdSense tag on this page, on purpose. (pub-8332061475038084)
 
-         The comment that used to sit here described a preconnect to the ORIGINAL
-         author's ad network, which the audit removed along with the network; the
-         tag below is ours.
+         It used to sit here, and it is why the account was refused on
+         2026-08-19, under "Google-served ads on screens without publisher
+         content". Read the policy against what this file actually serves and
+         the verdict is hard to argue with: strip the tags and the homepage
+         holds 192 words, of which about a hundred are button labels, an online
+         counter and emoji. The one real paragraph is the "What is SolRush?"
+         block below. Everything else on this screen is a menu, and the screen
+         after it is a game board — "screens that serve navigation or other
+         behavioural purposes", named in the policy almost word for word.
 
-         Deliberately a plain static tag rather than an injected one: the AdSense
-         reviewer reads the raw HTML looking for it, and a script that only exists
-         after JavaScript runs is easy for it to miss. The cost of that choice is
-         real though — it also runs when the game is embedded in somebody else's
-         portal, which every portal forbids. Once the account is approved this
-         belongs behind the WR_EMBED check below. -->
-    <script async
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8332061475038084"
-        crossorigin="anonymous"></script>
+         Asking for ads from the app shell also hands Auto Ads permission to
+         place them anywhere in the interface, including mid-game.
+
+         The tag stays on /rules/ and /regles/, which are real documents a
+         reader gets something from. It comes back here only if this page ever
+         carries content of its own worth reading, and even then it belongs
+         behind the WR_EMBED check below, because every portal that embeds this
+         game forbids running our ads inside theirs. -->
 
     <link rel="stylesheet" href="css/style.css?v=145">
     <!-- Are we inside somebody else's page? Every game portal forbids running
