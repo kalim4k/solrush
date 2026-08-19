@@ -138,6 +138,8 @@ export default {
   finish_title: 'Victory signature',
   finish_hint: 'It plays on your opponent’s screen when you win. Tap one to see it.',
   plus_locked: 'SolRush Plus only',
+  plus_working: "One moment…",
+  plus_redirecting: "Taking you to payment…",
   plus_need_account: "Create an account first — Plus is kept on the account, not on this phone.",
   plus_thanks: "You have SolRush Plus. Everything is unlocked.",
   replay_share: "Send this game",

@@ -140,6 +140,8 @@ export default {
   finish_title: 'Подпись победы',
   finish_hint: 'Она играет и на экране соперника, когда побеждаете вы. Нажмите, чтобы посмотреть.',
   plus_locked: 'Только для SolRush Plus',
+  plus_working: "Секунду…",
+  plus_redirecting: "Переходим к оплате…",
   plus_need_account: "Сначала создайте аккаунт — Plus хранится на аккаунте, а не на этом телефоне.",
   plus_thanks: "У вас есть SolRush Plus. Всё открыто.",
   replay_share: "Отправить эту партию",

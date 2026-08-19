@@ -260,3 +260,39 @@ test('the payment keys are not in the repository', () => {
       `${f} looks like it carries a real key`);
   }
 });
+
+/* The buy button used to be disabled and left saying the same thing, for the
+   several seconds a call to the payment provider can take. That reads as a
+   dead button, so people press it again — which is the worst instinct to
+   provoke on the one button that spends money. */
+test('the buy button says it is working', () => {
+  const app = readFileSync(join(ROOT, 'public/js/app.js'), 'utf8');
+  const fn = app.slice(app.indexOf('async function startPurchase'));
+  const body = fn.slice(0, fn.indexOf('function afterPlus'));
+
+  assert.match(body, /plus_working/, 'it must say something while it waits');
+  assert.match(body, /plus_redirecting/, 'and something else once it is leaving');
+  assert.match(body, /classList\.toggle\('busy'/, 'and be marked busy for the spinner');
+  /* Left busy on the way out on purpose: restoring the label would flash the
+     original wording during the navigation. Only the success path is checked —
+     the catch below it restores the button, which is exactly right when the
+     redirect never happens. */
+  const from = body.indexOf("busy(true, t('plus_redirecting'))");
+  const to = body.indexOf('location.href = out.url');
+  assert.ok(from !== -1 && to > from, 'the redirect should follow the busy label');
+  assert.doesNotMatch(body.slice(from, to), /busy\(false\)/,
+    'the label must not be restored between the redirect and the page leaving');
+});
+
+test('the spinner animates only transform', () => {
+  // Same rule as the victory signatures: anything else is laid out and painted
+  // on every frame, and this one spins beside a payment on a cheap phone.
+  const css = readFileSync(join(ROOT, 'public/css/style.css'), 'utf8');
+  const block = css.slice(css.indexOf('@keyframes btn-spin'));
+  const frames = block.slice(0, block.indexOf('}\n}') + 3);
+  const props = [...frames.matchAll(/^\s*([a-z-]+)\s*:/gm)].map((m) => m[1]);
+  for (const p of props) {
+    assert.ok(['transform', 'opacity', 'animation-timing-function'].includes(p),
+      `@keyframes btn-spin animates "${p}", which is not compositor-only`);
+  }
+});

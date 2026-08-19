@@ -3744,3 +3744,47 @@ html[data-theme="dark"] .lb-empty {
 #screen-game.spectating .chip-clock {
     visibility: hidden;
 }
+
+/* A button that is doing something.
+
+   Disabling it and leaving the label alone was the whole bug: it read as
+   broken, so people pressed it again. The spinner sits beside the new label
+   rather than replacing it — a bare spinner says "wait" but not what for, and
+   here the answer ("payment") is the reassuring part. */
+.btn-big.busy {
+    position: relative;
+    /* Not the usual dimmed-out disabled look: this button is working, not
+       unavailable, and greying it out says the opposite. */
+    opacity: 1;
+    cursor: progress;
+}
+
+.btn-big.busy::before {
+    content: '';
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-inline-end: .55em;
+    vertical-align: -.15em;
+    border: 2px solid currentColor;
+    /* One transparent quarter is what makes the rotation visible at all. */
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: btn-spin .7s linear infinite;
+}
+
+@keyframes btn-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Movement is the one thing some people cannot have. The ring still marks the
+   button as busy; it simply stops turning. */
+@media (prefers-reduced-motion: reduce) {
+    .btn-big.busy::before {
+        animation: none;
+        border-top-color: currentColor;
+        opacity: .5;
+    }
+}

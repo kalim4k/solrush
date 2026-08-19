@@ -2528,8 +2528,21 @@ async function startPurchase() {
         openAuthForm('register');
         return toast(t('plus_need_account'));
     }
+    /* This wait is real — it is a call to Maketou, and their end can take
+       seconds. Disabling the button without changing anything else was worse
+       than doing nothing: it looked pressed and dead, so people pressed it
+       again. It says what it is doing instead, and keeps saying it right
+       through the redirect, because the browser stays on this page for another
+       moment after location.href is set. */
     const btn = $('plus-buy');
-    btn.disabled = true;
+    const label = btn.textContent;
+    const busy = (on, text) => {
+        btn.disabled = on;
+        btn.classList.toggle('busy', on);
+        btn.textContent = on ? text : label;
+    };
+    busy(true, t('plus_working'));
+
     try {
         const r = await fetch('/api/plus/checkout', {
             method: 'POST',
@@ -2540,12 +2553,17 @@ async function startPurchase() {
             body: '{}',
         });
         const out = await r.json().catch(() => ({}));
-        if (out.plus) { myPlus = true; return afterPlus(); }
+        if (out.plus) { myPlus = true; busy(false); return afterPlus(); }
         // 503 is the honest case: no processor configured on this deployment.
-        if (r.status === 503) return toast(t('plus_soon'));
-        if (!r.ok || !out.url) return toast(t('err_generic'));
-        location.href = out.url;   // their checkout page takes it from here
-    } catch { toast(t('offline_bar')); } finally { btn.disabled = false; }
+        if (r.status === 503) { busy(false); return toast(t('plus_soon')); }
+        if (!r.ok || !out.url) { busy(false); return toast(t('err_generic')); }
+
+        // Deliberately left busy: the label becomes the last thing seen before
+        // the checkout page arrives, and restoring it here would flash the
+        // original wording for the fraction of a second the navigation takes.
+        busy(true, t('plus_redirecting'));
+        location.href = out.url;
+    } catch { busy(false); toast(t('offline_bar')); }
 }
 
 function afterPlus() {

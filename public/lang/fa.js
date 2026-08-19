@@ -140,6 +140,8 @@ export default {
   finish_title: 'امضای پیروزی',
   finish_hint: 'وقتی برنده می‌شوید، روی صفحهٔ حریف هم پخش می‌شود. برای دیدن یکی را بزنید.',
   plus_locked: 'ویژهٔ سول‌راش پلاس',
+  plus_working: "یک لحظه…",
+  plus_redirecting: "در حال رفتن به پرداخت…",
   plus_need_account: "اول یک حساب بسازید — Plus روی حساب نگه داشته می‌شود، نه روی این گوشی.",
   plus_thanks: "SolRush Plus را دارید. همه‌چیز باز شد.",
   replay_share: "فرستادن این بازی",
