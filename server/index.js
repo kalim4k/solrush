@@ -206,7 +206,7 @@ const clientIp = (req) =>
 
 /* ================= REST ================= */
 
-async function api(req, res, path) {
+async function api(req, res, path, url) {
   const body = req.method === 'POST' ? await readBody(req) : {};
   if (req.method === 'POST' && body === null) return json(res, 400, { error: 'bad_json' });
   const auth = bearer(req);
@@ -312,6 +312,62 @@ async function api(req, res, path) {
       return json(res, out.error ? 400 : 200, out);
     }
 
+    /* ---------- replays ---------- */
+
+    /* One finished game, by its share token.
+
+       Deliberately open: no account needed, no session, no membership check.
+       That is what makes the link shareable at all — a replay somebody has to
+       log in to watch is not something they forward to a friend, and every
+       forwarded link is somebody arriving at the game.
+
+       What that costs is stated plainly rather than assumed away: the token is
+       the only protection, so it is 16 random characters rather than a row id,
+       and the response carries nothing beyond what a spectator of that game
+       would have seen. No user ids, no emails, no ratings — two nicknames, a
+       board and the moves. The route also sends X-Robots-Tag: noindex, because
+       "anyone with the link" and "in a search result" are different promises
+       and only the first one was made. */
+    case '/api/replay': {
+      const token = String(body.token || url.searchParams.get('t') || '');
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(token)) return json(res, 400, { error: 'bad_token' });
+      // A cheap ceiling on guessing a 16-character token, which is already
+      // hopeless; this is here so trying costs something.
+      if (!rateLimit('replay:' + ip, 60, 60_000)) return json(res, 429, { error: 'slow_down' });
+
+      const row = await one(
+        `SELECT mode, p0_nick, p1_nick, winner, reason, moves, move_log, ended_at
+           FROM matches WHERE token = $1`, [token],
+      );
+      if (!row || !row.move_log) return json(res, 404, { error: 'no_replay' });
+      res.setHeader('X-Robots-Tag', 'noindex');
+      return json(res, 200, row);
+    }
+
+    /* The player's own finished games. Requires an account, because a guest is
+       a device rather than a person and "my games" would follow the browser
+       instead of the player. */
+    case '/api/matches': {
+      if (!auth) return json(res, 401, { error: 'unauthorized' });
+      const rows = await q(
+        `SELECT token, mode, p0_nick, p1_nick, p0_user, winner, reason, moves, ended_at
+           FROM matches
+          WHERE (p0_user = $1 OR p1_user = $1) AND ended_at IS NOT NULL AND token IS NOT NULL
+          ORDER BY ended_at DESC LIMIT 30`, [auth.sub],
+      );
+      // Which side the caller played is worked out here rather than in the
+      // browser: the browser would need the user id to do it, and there is no
+      // reason to send one.
+      return json(res, 200, {
+        rows: rows.rows.map((r) => ({
+          token: r.token, mode: r.mode, winner: r.winner, reason: r.reason,
+          moves: r.moves, ended_at: r.ended_at,
+          me: r.p0_user === auth.sub ? 0 : 1,
+          opponent: r.p0_user === auth.sub ? r.p1_nick : r.p0_nick,
+        })),
+      });
+    }
+
     case '/api/nick-notice/ack':
       return json(res, 200, { ok: true });
 
@@ -363,7 +419,7 @@ async function sendResetMail(to, link) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   if (url.pathname.startsWith('/api/')) {
-    api(req, res, url.pathname).catch((e) => {
+    api(req, res, url.pathname, url).catch((e) => {
       console.error('api error', url.pathname, e);
       if (!res.headersSent) json(res, 500, { error: 'server_error' });
     });
@@ -410,10 +466,18 @@ const hub = new Hub({
       // from being written.
       await room.matchIdReady;
       if (room.matchId) {
+        /* Minted in finish(), because game_over carries it to both players
+           before this hook ever runs. Null when nobody moved: an abandoned
+           game is not worth an address. It is random rather than the row id —
+           /r/7 invites anybody to read /r/6, and a replay carries both
+           players' nicknames. */
+        const token = room.replayToken || null;
         await q(
-          `UPDATE matches SET winner = $2, reason = $3, moves = $4, ended_at = now()
+          `UPDATE matches SET winner = $2, reason = $3, moves = $4, ended_at = now(),
+                              move_log = $5, token = $6
             WHERE id = $1`,
-          [room.matchId, winner, reason, room.moves],
+          [room.matchId, winner, reason, room.moves,
+            JSON.stringify(room.moveLog), token],
         );
       }
       for (const side of [0, 1]) {

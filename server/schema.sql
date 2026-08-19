@@ -112,6 +112,23 @@ CREATE TABLE IF NOT EXISTS matches (
 );
 CREATE INDEX IF NOT EXISTS matches_ended_idx ON matches (ended_at DESC);
 
+-- Replays. The row already recorded that a game happened and how it ended; it
+-- did not record the game. move_log is the ordered list of moves as the engine
+-- accepted them, which together with `mode` is enough to rebuild every
+-- position — the board is a pure function of its moves, so storing positions
+-- would be storing the same thing many times over.
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS move_log jsonb;
+
+-- The share link. Random and unguessable rather than the row id: /r/7 invites
+-- anybody to read /r/6, and a replay carries both players' nicknames.
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS token text;
+CREATE UNIQUE INDEX IF NOT EXISTS matches_token_idx ON matches (token);
+
+-- "My games", read as "this user's finished matches, newest first". Without
+-- these it is a full scan of every match ever played, on every open.
+CREATE INDEX IF NOT EXISTS matches_p0_idx ON matches (p0_user, ended_at DESC);
+CREATE INDEX IF NOT EXISTS matches_p1_idx ON matches (p1_user, ended_at DESC);
+
 /* ---------- web push ---------- */
 CREATE TABLE IF NOT EXISTS push_subs (
   endpoint   text PRIMARY KEY,

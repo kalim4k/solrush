@@ -3667,3 +3667,80 @@ html[data-theme="dark"] .lb-empty {
     color: var(--muted);
     font-size: .85rem;
 }
+
+/* ---------- my games / shared replays ---------- */
+
+.game-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 2px;
+    border-bottom: 1px solid var(--bezel);
+}
+
+.game-row:last-child {
+    border-bottom: 0;
+}
+
+.game-row .gr-res {
+    flex: none;
+    width: 1.4em;
+    text-align: center;
+}
+
+/* The nickname is the part that can be any length, so it is the part that
+   truncates — and it needs min-width:0 to be allowed to, inside a flex row. */
+.game-row .gr-who {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: .95rem;
+}
+
+.game-row .gr-when {
+    flex: none;
+    color: var(--muted);
+    font-size: .82rem;
+}
+
+.game-row .gr-watch,
+.game-row .gr-share {
+    flex: none;
+    /* 34px, not the 24 the glyph needs: these sit side by side on a phone and
+       a target smaller than this is one a thumb misses. */
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--bezel);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--violet);
+    font-size: .95rem;
+    cursor: pointer;
+}
+
+.game-row.lost .gr-res {
+    opacity: .35;
+}
+
+/* Who played, above the scrubber. Only a replay somebody sent you shows it. */
+.rp-title {
+    text-align: center;
+    padding: 6px 12px 0;
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Watching somebody else's finished game. The clocks are the last thing that
+   still implies a live match — they read 5:00 beside two people who stopped
+   playing hours ago — and they are the one part of the pill that cannot simply
+   be hidden without the layout jumping, so they go transparent in place. */
+#screen-game.spectating .chip-clock {
+    visibility: hidden;
+}

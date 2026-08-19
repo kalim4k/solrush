@@ -203,3 +203,41 @@ test('hardcore beats easy over a full game', () => {
   }
   assert.equal(s.winner, 0, 'the stronger level won');
 });
+
+/* Replays are stored as MOVES, not as positions, so a shared game is only as
+   good as the engine's ability to replay them in order. This is the property
+   the whole feature rests on: the board is a pure function of its moves. */
+test('a game replays from its move log to the same position', () => {
+  const s = initialState('duel');
+  const log = [];
+  // A short, legal game: both pawns walk forward, one wall goes down.
+  const moves = [
+    { type: 'pawn', r: 7, c: 4 },
+    { type: 'pawn', r: 1, c: 4 },
+    { type: 'wall', r: 3, c: 3, o: 'h' },
+    { type: 'pawn', r: 2, c: 4 },
+    { type: 'pawn', r: 6, c: 4 },
+  ];
+  for (const m of moves) {
+    assert.ok(applyMove(s, m), `move should be legal: ${JSON.stringify(m)}`);
+    log.push(m);
+  }
+
+  const rebuilt = initialState('duel');
+  for (const m of log) assert.ok(applyMove(rebuilt, m), 'the recorded move replays');
+
+  assert.deepEqual(rebuilt.pawns, s.pawns, 'both pawns end where they ended');
+  assert.equal(rebuilt.walls.length, s.walls.length, 'the same walls are standing');
+  assert.deepEqual(rebuilt.left, s.left, 'the same wall supplies remain');
+  assert.equal(rebuilt.turn, s.turn, 'and it is the same player to move');
+});
+
+test('a replay stops at a move the engine will not accept', () => {
+  // A corrupt or truncated log must not be applied around: everything after a
+  // rejected move was played against a board this one changed, so continuing
+  // replays a different game while still looking like a valid one.
+  const s = initialState('duel');
+  assert.ok(applyMove(s, { type: 'pawn', r: 7, c: 4 }));
+  assert.equal(applyMove(s, { type: 'pawn', r: 0, c: 0 }), false,
+    'a teleport is refused rather than silently applied');
+});

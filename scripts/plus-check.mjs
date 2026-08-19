@@ -110,7 +110,7 @@ try {
     once: document.querySelector('#overlay-plus .plus-price span').textContent,
   })`);
   step(shown.price.length > 3, `a price is shown: "${shown.price}"`);
-  step(shown.items === 5, `${shown.items} things you get are listed`);
+  step(shown.items === 6, `${shown.items} things you get are listed`);
   step(shown.title.length > 0 && shown.lede.length > 0 && shown.buy.length > 0,
     'the offer is written, not a set of empty translation slots');
   step(/once|fois|vez|раз|kez|بار/i.test(shown.once),

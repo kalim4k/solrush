@@ -109,14 +109,24 @@
          1 KB. The two PNGs are for browsers that ignore SVG favicons, and for
          the places that read a file rather than a tag (bookmark bars, Windows
          tiles). Order matters: the first one a browser understands wins. -->
-    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
-    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+    <!-- Absolute paths, all of them, and this is not a style preference.
+
+         The server falls back to this file for any address it does not
+         recognise, so the app can live at /r/<token> as well as at /. Written
+         relatively, "css/style.css" resolves against /r/ on that page — the
+         browser asks for /r/css/style.css, gets this HTML back through the
+         same fallback, refuses it for having the wrong MIME type, and does the
+         identical thing to js/app.js. The result is a page with no stylesheet
+         and no script at all: a shared replay opened to the bare home screen
+         and did nothing, with the reason visible only in the console. -->
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
     <!-- iOS ignores the manifest for the home-screen icon and reads this. It
          also applies its own rounding, so this file is the square badge with
          no corner radius baked in. -->
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
 
     <!-- No AdSense tag on this page, on purpose. (pub-8332061475038084)
 
@@ -139,7 +149,7 @@
          behind the WR_EMBED check below, because every portal that embeds this
          game forbids running our ads inside theirs. -->
 
-    <link rel="stylesheet" href="css/style.css?v=147">
+    <link rel="stylesheet" href="/css/style.css?v=149">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -339,6 +349,7 @@
                     <li><span>👑</span><span data-i18n="plus_item_badges"></span></li>
                     <li><span>🔊</span><span data-i18n="plus_item_packs"></span></li>
                     <li><span>🏅</span><span data-i18n="plus_item_finish"></span></li>
+                    <li><span>🎞️</span><span data-i18n="plus_item_games"></span></li>
                 </ul>
 
                 <p class="plus-price"><b id="plus-price-value"></b><span data-i18n="plus_once"></span></p>
@@ -560,6 +571,13 @@
                     <button class="btn-big" id="btn-rematch" data-i18n="rematch"></button>
                     <button class="btn-big btn-ghost" id="btn-invite-friend" data-i18n="invite_short"></button>
                     <button class="btn-big btn-ghost" id="btn-replay" data-i18n="replay"></button>
+                    <!-- Hidden unless the server sent a token, which it does
+                         only for online games that had at least one move. Free
+                         for everybody on purpose: every link somebody sends is
+                         a person arriving at the game, and putting that behind
+                         a paywall would be charging for your own advertising.
+                         Keeping the archive of past games is the Plus part. -->
+                    <button class="btn-big btn-ghost" id="btn-share-replay" data-i18n="replay_share" hidden></button>
                     <button class="btn-big btn-outline" id="btn-to-menu" data-i18n="back_menu"></button>
                 </div>
                 <p id="rematch-status" class="hint" hidden></p>
@@ -586,6 +604,11 @@
 
         <!-- ============ REPLAY CONTROLS (over the game board) ============ -->
         <div id="replay-bar" hidden>
+            <!-- Only shown for a replay somebody sent you: it names the two
+                 people who played, which is the one thing a spectator cannot
+                 work out from the board. In your own post-game replay you
+                 already know, so it stays out of the way. -->
+            <div class="rp-title" id="rp-title" hidden></div>
             <div class="replay-inner">
                 <button class="rp-btn" id="rp-start" aria-label="start">⏮</button>
                 <button class="rp-btn" id="rp-prev" aria-label="prev">⏴</button>
@@ -816,6 +839,16 @@
                 <p class="hint" data-i18n="finish_hint"></p>
             </div>
 
+            <!-- My games. Populated only for an account with Plus: a guest is
+                 a device rather than a person, so a history kept for one would
+                 follow the browser and not the player. -->
+            <div class="cosmetics-box" id="games-box" hidden>
+                <h3 class="cos-title" data-i18n="games_title"></h3>
+                <p class="hint" data-i18n="games_hint"></p>
+                <div id="games-list"></div>
+                <p class="hint" id="games-empty" data-i18n="games_empty" hidden></p>
+            </div>
+
             <div id="logged-box" class="auth-box" hidden>
                 <button class="btn-big btn-outline" id="btn-logout" data-i18n="logout"></button>
             </div>
@@ -906,7 +939,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="js/app.js?v=147"></script>
+    <script type="module" src="/js/app.js?v=149"></script>
 </body>
 
 </html>

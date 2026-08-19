@@ -451,7 +451,8 @@ function show(screenId) {
     document.querySelectorAll('.nav-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.screen === screenId));
     if (screenId === 'screen-leaderboard') loadLeaderboard();
-    if (screenId === 'screen-profile') { updateProfileUI(); renderPushRow(); } // points move every match
+    // points move every match, and so does the list of games that produced them
+    if (screenId === 'screen-profile') { updateProfileUI(); renderPushRow(); loadMyGames(); }
     if (screenId === 'screen-rooms') wsSend({ t: 'lobby_sub' });
     else wsSend({ t: 'lobby_unsub' });
 }
@@ -631,6 +632,9 @@ function handleWsMessage(msg) {
                     game.award = msg.points;
                     updateProfileUI();
                 }
+                // Kept on the game so the share button can build its link once
+                // the result screen is actually up.
+                game.replayToken = msg.replay || null;
                 onGameOver(msg.winner === msg.you, msg.reason);
             }
             break;
@@ -1259,9 +1263,16 @@ function renderGame() {
 
     const myTurn = s.turn === me && s.winner === null && !game.over;
 
-    // pawns: my pawn gets my skin, or my seat colour; glowing ring on my turn
-    paintPawn(pawnEls[me], resolveSkin(mySkin, myPlus), myPixel, myColor(), myTurn ? 'glow' : '');
-    paintPawn(pawnEls[1 - me], game.oppSkin, game.oppPixel, oppColor());
+    /* pawns: my pawn gets my skin, or my seat colour; glowing ring on my turn.
+
+       Watching somebody else's game is the exception. "My" skin means nothing
+       there — neither player is you — so both pawns fall back to their seat
+       colours rather than dressing a stranger in your cosmetics. */
+    const spec = Boolean(game.spectating);
+    paintPawn(pawnEls[me], spec ? DEFAULT_SKIN : resolveSkin(mySkin, myPlus),
+      spec ? '' : myPixel, myColor(), myTurn ? 'glow' : '');
+    paintPawn(pawnEls[1 - me], spec ? DEFAULT_SKIN : game.oppSkin,
+      spec ? '' : game.oppPixel, oppColor());
     positionPawn(0);
     positionPawn(1);
 
@@ -1278,8 +1289,9 @@ function renderGame() {
     }
 
     // HUD — rank icons only during play; the number belongs on the result screen
-    setNickWithBadge($('me-nick'), myNick(), resolveBadge(myBadge, myPlus));
-    setNickWithBadge($('opp-nick'), game.oppNick, game.oppBadge);
+    setNickWithBadge($('me-nick'), spec ? game.myNick : myNick(),
+      spec ? '' : resolveBadge(myBadge, myPlus));
+    setNickWithBadge($('opp-nick'), game.oppNick, spec ? '' : game.oppBadge);
     const online = game.mode === 'online';
     $('me-rank').textContent = online ? rankIcon(myPoints) : '';
     $('opp-rank').textContent = online ? rankIcon(game.oppPoints || 0) : '';
@@ -1302,13 +1314,20 @@ function renderGame() {
         game.oppSkin, game.oppPixel, oppColor());
     applyChipBallColors();
     $('turn-banner').textContent = myTurn ? t('your_turn') : t('opp_turn');
+    /* Nothing to operate in a game that is not yours and is already over:
+       the resign button, the wall dock and the clocks were all still on
+       screen, offering a spectator the chance to abandon somebody else's
+       finished match. */
+    $('btn-resign').hidden = spec;
+    $('wall-dock').hidden = spec;
+    document.getElementById('screen-game').classList.toggle('spectating', spec);
     const bandTop = board.querySelector('.zone-band.top');
     const bandBottom = board.querySelector('.zone-band.bottom');
     if (isRace()) {
         // race: everyone runs to the same finish line on top
         $('zone-top').textContent = '🏁 ' + t('finish_label');
         $('zone-top').className = 'zone-label zone-top finish';
-        $('zone-bottom').textContent = '▲ ' + myNick().toUpperCase() + ' · ' + String(game.oppNick).toUpperCase();
+        $('zone-bottom').textContent = '▲ ' + sideNick().toUpperCase() + ' · ' + String(game.oppNick).toUpperCase();
         $('zone-bottom').className = 'zone-label zone-bottom';
         if (bandTop) bandTop.className = 'zone-band top finish';
     } else {
@@ -1316,13 +1335,19 @@ function renderGame() {
         // opponent's home on top, mine at the bottom (that's also my start)
         $('zone-top').textContent = '▲ ' + String(game.oppNick).toUpperCase();
         $('zone-top').className = 'zone-label zone-top ' + oppColor();
-        $('zone-bottom').textContent = '▼ ' + myNick().toUpperCase();
+        $('zone-bottom').textContent = '▼ ' + sideNick().toUpperCase();
         $('zone-bottom').className = 'zone-label zone-bottom ' + myColor();
         if (bandTop) bandTop.className = 'zone-band top ' + oppColor();
         if (bandBottom) bandBottom.className = 'zone-band bottom ' + myColor();
     }
 }
 
+/* Who is sitting in the near seat. Your own name in your own game, and the
+   name of whoever actually played there in a replay — the board labels the
+   ENDS OF THE BOARD, not the person looking at it, and printing the viewer's
+   nickname under a stranger's pawn is how a shared replay claimed a spectator
+   had played it. */
+function sideNick() { return game.spectating ? (game.myNick || '') : myNick(); }
 function myColor() { return game.myIndex === 0 ? 'blue' : 'red'; }
 function oppColor() { return game.myIndex === 0 ? 'red' : 'blue'; }
 
@@ -1688,6 +1713,8 @@ function onGameOver(iWon, reason) {
         spawnConfetti(iWon);
         $('btn-rematch').style.display = '';
         $('rematch-status').hidden = true;
+        // Only online games have a token, and only ones somebody moved in.
+        $('btn-share-replay').hidden = !game?.replayToken;
         $('overlay-gameover').hidden = false;
         maybeAskPush();
         maybePortalAd();
@@ -1874,11 +1901,178 @@ function stopReplay() {
     if (game) game.state = replay.savedState; // put the final position back
     replay = null;
     $('replay-bar').hidden = true;
+    $('rp-title').hidden = true;
+}
+
+/* ================= shared replays =================
+
+   The player above rebuilds a finished game from `game.history`, an array of
+   positions collected while the game was being played. A game somebody sends
+   you was not played in your browser, so there is nothing to collect — the
+   server stores the MOVES instead, and this turns them back into positions.
+
+   Storing moves rather than positions is not a space optimisation: the board is
+   a pure function of its moves, so positions are the same information written
+   out once per turn, and two copies of the same truth eventually disagree. */
+function historyFromMoves(mode, moves) {
+    const state = initialState(mode);
+    const history = [cloneState(state)];
+    for (const m of moves) {
+        // A move the engine refuses cannot be skipped over: everything after it
+        // was played against a board that this one changed, so the rest of the
+        // replay would be a different game. Stop and show what reconstructed.
+        if (!applyMove(state, m)) break;
+        history.push(cloneState(state));
+    }
+    return history;
+}
+
+/* A replay is a board with no seat at it. `myIndex: -1` is what says so: the
+   dock, the resign button and the clock all ask "is it my turn", and for a
+   spectator the answer has to be no rather than an accidental yes. */
+function openSharedReplay(data) {
+    const history = historyFromMoves(data.mode, data.move_log || []);
+    if (history.length < 2) return toast(t('replay_gone'));
+
+    stopReplay();
+    game = {
+        mode: 'replay',
+        state: cloneState(history[history.length - 1]),
+        history,
+        // Seat 0, not -1: the renderer INDEXES arrays with this, so a
+        // sentinel out of range crashes it. `spectating` is what says nobody
+        // is playing; `over` keeps every turn-dependent control switched off.
+        myIndex: 0,
+        myNick: data.p0_nick,
+        oppNick: data.p1_nick,
+        clocks: null,
+        over: true,
+        spectating: true,
+    };
+    $('overlay-gameover').hidden = true;
+    $('rp-title').textContent = data.p0_nick + '  ·  ' + data.p1_nick;
+    $('rp-title').hidden = false;
+    show('screen-game');
+    buildBoard();
+    renderGame();
+    replay = { idx: 0, timer: null, playing: false, savedState: game.state };
+    $('replay-bar').hidden = false;
+    playReplay(true);
+}
+
+async function loadSharedReplay(token) {
+    let data;
+    /* The catch covers the network and nothing else, deliberately. Wrapping the
+       rendering in it too meant a programming error inside openSharedReplay was
+       reported to the player as "you appear to be offline", and to me as
+       nothing at all — the replay simply stopped halfway through opening, with
+       no exception anywhere to find. */
+    try {
+        const r = await fetch('/api/replay?t=' + encodeURIComponent(token));
+        if (!r.ok) return toast(t('replay_gone'));
+        data = await r.json();
+    } catch { return toast(t('offline_bar')); }
+    openSharedReplay(data);
+}
+
+const replayUrl = (token) => location.origin + '/r/' + token;
+
+/* Share sheet where there is one, clipboard where there is not. The native
+   sheet matters more here than anywhere else in the app: this link is meant to
+   reach one specific person in whatever messenger the player already uses, and
+   "copied" leaves them to find that app themselves. */
+async function shareReplay(token) {
+    const url = replayUrl(token);
+    if (navigator.share) {
+        try { await navigator.share({ title: 'SolRush', text: t('replay_share_text'), url }); return; }
+        catch { /* dismissed, or not allowed here — fall through to copying */ }
+    }
+    toast(await copyText(url) ? t('replay_copied') : url);
+}
+
+$('btn-share-replay').addEventListener('click', () => {
+    if (game?.replayToken) shareReplay(game.replayToken);
+});
+
+/* ---------- my games ----------
+
+   Plus only, and the reason is not that the list is expensive to serve. A guest
+   is a device, not a person: a history kept for one follows the browser, dies
+   with the cache, and shows a different past on every phone. It is a feature
+   that only means anything attached to an account. */
+async function loadMyGames() {
+    const box = $('games-box');
+    box.hidden = !(myPlus && session?.access_token);
+    if (box.hidden) return;
+
+    let rows = [];
+    try {
+        const r = await fetch('/api/matches', {
+            headers: { Authorization: 'Bearer ' + session.access_token },
+        });
+        if (!r.ok) return;
+        rows = (await r.json()).rows || [];
+    } catch { return; }
+
+    const list = $('games-list');
+    list.textContent = '';
+    $('games-empty').hidden = rows.length > 0;
+
+    for (const g of rows) {
+        const row = document.createElement('div');
+        row.className = 'game-row' + (g.winner === g.me ? ' won' : ' lost');
+
+        const res = document.createElement('span');
+        res.className = 'gr-res';
+        res.textContent = g.winner === g.me ? '🏆' : '·';
+
+        const who = document.createElement('span');
+        who.className = 'gr-who';
+        who.textContent = g.opponent || '?';
+
+        const when = document.createElement('span');
+        when.className = 'gr-when';
+        // The player's own locale, not the server's: a date is one of the few
+        // things every language pack would otherwise have to spell out.
+        when.textContent = g.ended_at
+            ? new Date(g.ended_at).toLocaleDateString(lang, { day: 'numeric', month: 'short' })
+            : '';
+
+        const watch = document.createElement('button');
+        watch.className = 'gr-watch';
+        watch.textContent = '▶';
+        watch.setAttribute('aria-label', t('replay'));
+        watch.addEventListener('click', () => loadSharedReplay(g.token));
+
+        const send = document.createElement('button');
+        send.className = 'gr-share';
+        send.textContent = '↗';
+        send.setAttribute('aria-label', t('replay_share'));
+        send.addEventListener('click', () => shareReplay(g.token));
+
+        row.append(res, who, when, watch, send);
+        list.appendChild(row);
+    }
+}
+
+/* /r/<token> in the address bar. Cleared once read, so that pressing back after
+   watching returns to the game rather than to the replay again — and so a
+   refresh mid-game does not yank the player out of it. */
+function takeReplayFromUrl() {
+    const m = location.pathname.match(/^\/r\/([A-Za-z0-9_-]{8,64})$/);
+    if (!m) return;
+    history.replaceState(null, '', '/');
+    loadSharedReplay(m[1]);
 }
 
 $('btn-replay').addEventListener('click', startReplay);
 $('rp-close').addEventListener('click', () => {
+    // A shared replay has no win/lose screen behind it — there was no game of
+    // yours to return to. Closing one goes home, which is also where somebody
+    // who arrived from a friend's link should land: at the game itself.
+    const shared = game?.mode === 'replay';
     stopReplay();
+    if (shared) { game = null; show('screen-home'); return; }
     $('overlay-gameover').hidden = false; // back to the win/lose screen
 });
 $('rp-play').addEventListener('click', () => playReplay(!replay?.playing));
@@ -3159,6 +3353,9 @@ async function boot() {
     logVisit(false);
     updateProfileUI();
     renderOnlineState();
+    // After applyI18n, so a replay that fails to load can say so in the
+    // player's own language rather than printing a translation key.
+    takeReplayFromUrl();
     connectWs();
     try {
         config = await (await fetch('/api/config')).json();

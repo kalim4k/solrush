@@ -8,7 +8,7 @@
 // happens — no way to place a wall you do not have, move on your opponent's
 // turn, or teleport.
 
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import {
   initialState, applyMove, cloneState, mustPass, MODES,
 } from '../public/js/engine.js';
@@ -87,6 +87,14 @@ class Room {
     this.turnStart = 0;
     this.over = false;
     this.moves = 0;
+    /* Every accepted move, in order. The board is a pure function of its moves,
+       so this plus `mode` rebuilds every position of the game — storing the
+       positions themselves would store the same walls once per turn.
+
+       Only moves the engine ACCEPTED are pushed. A rejected move never
+       happened as far as the game is concerned, and a replay that includes one
+       does not reconstruct: applying it desynchronises everything after it. */
+    this.moveLog = [];
     this.matchId = null;
     this.rematchVotes = [false, false];
     this.startedAt = null;
@@ -240,6 +248,12 @@ class Room {
 
     this.chargeClock(side);
     this.moves++;
+    // Recorded only now, past applyMove's verdict: see moveLog's note above.
+    // Normalised rather than stored as it arrived, so a client that sends
+    // extra fields cannot put anything of its choosing into the replay.
+    this.moveLog.push(move.type === 'wall'
+      ? { type: 'wall', r: move.r | 0, c: move.c | 0, o: move.o === 'v' ? 'v' : 'h' }
+      : { type: 'pawn', r: move.r | 0, c: move.c | 0 });
 
     if (this.state.winner !== null) {
       this.sendState();
@@ -290,12 +304,21 @@ class Room {
     this.over = true;
     this.clocks.paused = true;
 
+    /* Minted here rather than in the database hook, because game_over is sent
+       now and the hook runs afterwards — a token created there arrives too
+       late for the message that carries it, which is the moment a player
+       actually wants to send the game to somebody.
+
+       Null when nobody moved: an abandoned game is not worth an address. */
+    this.replayToken = this.moveLog.length ? randomBytes(12).toString('base64url') : null;
+
     const award = this.ranked ? this.applyPoints(winner) : null;
     for (const side of [0, 1]) {
       this.send(side, {
         t: 'game_over',
         winner, you: side, reason,
         points: award ? award[side] : null,
+        replay: this.replayToken,
       });
     }
     this.hub.onMatchEnd?.(this, winner, reason);
