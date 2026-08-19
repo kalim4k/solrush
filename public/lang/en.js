@@ -138,6 +138,18 @@ export default {
   finish_title: 'Victory signature',
   finish_hint: 'It plays on your opponent’s screen when you win. Tap one to see it.',
   plus_locked: 'SolRush Plus only',
+  plus_title: "SolRush Plus",
+  plus_lede: "Everything cosmetic in the game, unlocked. Paid once, kept forever.",
+  plus_item_skins: "Every pawn skin",
+  plus_item_photo: "Your own photo as your pawn",
+  plus_item_badges: "Every badge beside your name",
+  plus_item_packs: "Every sound pack",
+  plus_item_finish: "Every victory signature, played on your opponent’s screen",
+  plus_once: "once — no subscription, no renewal",
+  plus_buy: "Get SolRush Plus",
+  plus_later: "Maybe later",
+  plus_banner_sub: "Unlock everything, once and for all",
+  plus_soon: "Payment is not open yet. It is the next thing being built.",
 
   /* ---- ranks ---- */
   rank_wood: 'Wood',

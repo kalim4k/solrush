@@ -2069,6 +2069,9 @@ function renderLeaderboard(rows, savedAt) {
 function updateProfileUI() {
     const nick = myNick();
     setNickWithBadge($('profile-nick'), nick, resolveBadge(myBadge, myPlus));
+    // Never sell to somebody who has already bought: seeing the offer again
+    // after paying reads as "the payment did not go through".
+    $('btn-plus').hidden = myPlus;
     /* The avatar shows the pawn the player chose, so the profile answers "what
        do I look like to everybody else" in one glance — which is the question
        the whole appearance box exists to answer. It falls back to the initial
@@ -2165,7 +2168,7 @@ function renderCosmetics() {
         // The photo swatch shows the photo, once there is one to show.
         if (s.id === 'photo' && isPhoto(myPixel)) el.style.backgroundImage = photoURL(myPixel);
         el.addEventListener('click', () => {
-            if (locked) return toast(t('plus_locked'));
+            if (locked) return plusRefused();
             // Choosing the photo swatch with no photo yet means "pick one".
             if (s.id === 'photo' && !isPhoto(myPixel)) return $('pixel-file').click();
             mySkin = s.id;
@@ -2179,7 +2182,7 @@ function renderCosmetics() {
         const locked = !b.free && !myPlus;
         const el = cosSwatch(b.id, true, b.id === myBadge, locked);
         el.addEventListener('click', () => {
-            if (locked) return toast(t('plus_locked'));
+            if (locked) return plusRefused();
             myBadge = b.id;
             cosSave();
         });
@@ -2200,7 +2203,7 @@ function renderCosmetics() {
                    there is nothing to protect: the sound is a few lines of
                    code that already shipped to this browser. */
                 previewPack(p.id);
-                return toast(t('plus_locked'));
+                return plusRefused();
             }
             myPack = p.id;
             cosSave();
@@ -2223,7 +2226,7 @@ function renderCosmetics() {
             // Same reasoning as the sound packs: show it, then refuse. This one
             // is the whole reason to buy, and it costs nothing to demonstrate.
             previewFinish(f.id);
-            if (locked) return toast(t('plus_locked'));
+            if (locked) return plusRefused();
             myFinish = f.id;
             cosSave();
         });
@@ -2300,8 +2303,43 @@ async function encodePhoto(file) {
     return small.toDataURL('image/jpeg', 0.6);
 }
 
+/* ================= SolRush Plus ================= */
+
+/* One price, in one place. It is not in the language packs: a number copied
+   into six files is a number that will one day disagree with itself, and the
+   one thing a player must never see is two prices for the same thing.
+
+   Both currencies are shown together rather than picked by language. The game
+   is played in six languages from more countries than that, and guessing what
+   somebody's money is from what language they read is how you show a West
+   African player a euro price and a French player francs. */
+const PLUS_PRICE = '1 000 FCFA · ≈ 2 €';
+
+function openPlus() {
+    $('plus-price-value').textContent = PLUS_PRICE;
+    $('overlay-plus').hidden = false;
+}
+
+/* The seam the payment processor plugs into. Everything above is finished and
+   shipped; this is the only part waiting, and it is deliberately one function
+   so wiring a processor touches nothing else. Until then it says so plainly
+   rather than pretending to take money. */
+function startPurchase() {
+    toast(t('plus_soon'));
+}
+
+/* Refusing a sale you just offered is the bug this replaces: tapping a locked
+   swatch used to say "SolRush Plus only" and lead nowhere at all. */
+function plusRefused() {
+    openPlus();
+}
+
+$('btn-plus').addEventListener('click', openPlus);
+$('plus-buy').addEventListener('click', startPurchase);
+$('plus-close').addEventListener('click', () => { $('overlay-plus').hidden = true; });
+
 $('btn-pixel').addEventListener('click', () => {
-    if (!myPlus) return toast(t('plus_locked'));
+    if (!myPlus) return plusRefused();
     $('pixel-file').click();
 });
 

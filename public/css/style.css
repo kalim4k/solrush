@@ -3550,3 +3550,120 @@ html[data-theme="dark"] .lb-empty {
         padding: 6px 12px;
     }
 }
+
+/* ================= SolRush Plus =================
+
+   The offer the game never had. Everything here is gold rather than the app's
+   violet, on purpose: it is the one thing on the profile screen that is not
+   part of the game, and it should not be mistaken for a setting. */
+
+.plus-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin: 10px 0 4px;
+    padding: 12px 14px;
+    border: 1px solid #e0b64a;
+    border-radius: var(--radius);
+    /* Flat, not a gradient with a shine sweeping across it. This sits above a
+       list of things the player cannot have; an animated banner over a locked
+       shelf reads as pressure rather than as an offer. */
+    background: linear-gradient(135deg, #fff6df, #ffeec4);
+    color: #6b4c07;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+.plus-banner .pb-crown {
+    font-size: 1.5rem;
+    line-height: 1;
+    flex: none;
+}
+
+.plus-banner .pb-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.plus-banner .pb-text b {
+    font-size: .98rem;
+}
+
+.plus-banner .pb-text small {
+    font-size: .82rem;
+    opacity: .8;
+}
+
+.plus-banner .pb-arrow {
+    flex: none;
+    font-size: 1.3rem;
+    opacity: .55;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .plus-banner {
+        background: linear-gradient(135deg, #3a3117, #2b2513);
+        border-color: #7a6427;
+        color: #f0d99a;
+    }
+}
+
+.plus-modal {
+    text-align: center;
+}
+
+.plus-modal .plus-crown {
+    font-size: 2.6rem;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.plus-modal h2 {
+    margin: 0 0 6px;
+}
+
+.plus-lede {
+    margin: 0 0 14px;
+    color: var(--muted);
+    font-size: .95rem;
+}
+
+.plus-list {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    text-align: start;
+}
+
+.plus-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: .95rem;
+}
+
+.plus-list li span:first-child {
+    flex: none;
+    width: 1.6em;
+    text-align: center;
+}
+
+.plus-price {
+    margin: 0 0 4px;
+    font-size: 1.05rem;
+}
+
+.plus-price b {
+    display: block;
+    font-size: 1.5rem;
+}
+
+.plus-price span {
+    color: var(--muted);
+    font-size: .85rem;
+}

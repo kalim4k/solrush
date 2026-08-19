@@ -139,7 +139,7 @@
          behind the WR_EMBED check below, because every portal that embeds this
          game forbids running our ads inside theirs. -->
 
-    <link rel="stylesheet" href="css/style.css?v=146">
+    <link rel="stylesheet" href="css/style.css?v=147">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -314,6 +314,38 @@
                 <div class="legal-text" id="legal-text"></div>
                 <div class="modal-buttons">
                     <button class="btn-big" id="legal-close" data-i18n="legal_close"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ SOLRUSH PLUS (overlay) ============
+
+             Until now the game refused a sale it had just offered: tapping a
+             locked skin said "SolRush Plus only" and led nowhere — no page, no
+             price, no way to buy. This is that page.
+
+             The price is not in the language packs. It lives in one constant in
+             app.js, because a price that has to be edited in six files is a
+             price that will one day disagree with itself. -->
+        <div class="overlay" id="overlay-plus" hidden>
+            <div class="modal plus-modal">
+                <div class="plus-crown">👑</div>
+                <h2 data-i18n="plus_title"></h2>
+                <p class="plus-lede" data-i18n="plus_lede"></p>
+
+                <ul class="plus-list">
+                    <li><span>🎨</span><span data-i18n="plus_item_skins"></span></li>
+                    <li><span>📷</span><span data-i18n="plus_item_photo"></span></li>
+                    <li><span>👑</span><span data-i18n="plus_item_badges"></span></li>
+                    <li><span>🔊</span><span data-i18n="plus_item_packs"></span></li>
+                    <li><span>🏅</span><span data-i18n="plus_item_finish"></span></li>
+                </ul>
+
+                <p class="plus-price"><b id="plus-price-value"></b><span data-i18n="plus_once"></span></p>
+
+                <div class="modal-buttons">
+                    <button class="btn-big" id="plus-buy" data-i18n="plus_buy"></button>
+                    <button class="btn-link" id="plus-close" data-i18n="plus_later"></button>
                 </div>
             </div>
         </div>
@@ -744,6 +776,18 @@
                 <h3 class="cos-title" data-i18n="cosmetics_title"></h3>
                 <p class="hint" data-i18n="cosmetics_hint"></p>
 
+                <!-- Hidden once the account already has Plus. Somebody who has
+                     paid should never be sold to again; seeing the offer after
+                     buying reads as "it did not go through". -->
+                <button class="plus-banner" id="btn-plus" hidden>
+                    <span class="pb-crown">👑</span>
+                    <span class="pb-text">
+                        <b data-i18n="plus_title"></b>
+                        <small data-i18n="plus_banner_sub"></small>
+                    </span>
+                    <span class="pb-arrow">›</span>
+                </button>
+
                 <h4 class="cos-sub" data-i18n="skins_title"></h4>
                 <div class="cos-grid" id="skin-grid"></div>
 
@@ -862,7 +906,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="js/app.js?v=146"></script>
+    <script type="module" src="js/app.js?v=147"></script>
 </body>
 
 </html>

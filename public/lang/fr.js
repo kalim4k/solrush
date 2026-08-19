@@ -139,6 +139,18 @@ export default {
   finish_title: 'Signature de victoire',
   finish_hint: 'Elle se joue chez ton adversaire quand tu gagnes. Touche-en une pour la voir.',
   plus_locked: 'Réservé à SolRush Plus',
+  plus_title: "SolRush Plus",
+  plus_lede: "Tout le cosmétique du jeu, débloqué. Payé une fois, gardé pour toujours.",
+  plus_item_skins: "Tous les skins de pion",
+  plus_item_photo: "Ta photo comme pion",
+  plus_item_badges: "Tous les badges à côté de ton pseudo",
+  plus_item_packs: "Tous les packs sonores",
+  plus_item_finish: "Toutes les signatures de victoire, jouées sur l’écran de l’adversaire",
+  plus_once: "une seule fois — pas d’abonnement, pas de renouvellement",
+  plus_buy: "Obtenir SolRush Plus",
+  plus_later: "Plus tard",
+  plus_banner_sub: "Tout débloquer, une fois pour toutes",
+  plus_soon: "Le paiement n’est pas encore ouvert. C’est la prochaine chose en construction.",
 
   /* ---- rangs ---- */
   rank_wood: 'Bois',

@@ -195,3 +195,29 @@ test('the game shell does not ask for ads', () => {
   assert.doesNotMatch(html, /adsbygoogle|pagead2\.googlesyndication/,
     'no ad loader on a screen whose content is a menu and a board');
 });
+
+/* SolRush Plus had no offer. The game gated five kinds of cosmetic behind it,
+   said "SolRush Plus only" when one was tapped, and then led nowhere: no page
+   describing it, no price, no way to buy. A player reads that as broken, and
+   it refuses a sale the game itself just proposed.
+
+   These pin the parts a screenshot cannot: that the offer exists in the
+   markup, and that the price is defined once rather than copied into six
+   language packs where the copies can drift apart. */
+test('the Plus offer exists and can be bought from', () => {
+  const html = readFileSync(join(ROOT, 'public/index.html'), 'utf8');
+  assert.match(html, /id="overlay-plus"/, 'there must be an offer to open');
+  assert.match(html, /id="plus-buy"/, 'and a way to act on it');
+  assert.match(html, /id="btn-plus"/, 'reachable without tapping a locked item first');
+});
+
+test('the price is written down exactly once', () => {
+  const app = readFileSync(join(ROOT, 'public/js/app.js'), 'utf8');
+  assert.match(app, /const PLUS_PRICE = /, 'the price lives in one constant');
+
+  for (const code of ['en', 'fr', 'es', 'ru', 'tr', 'fa']) {
+    const pack = readFileSync(join(ROOT, `public/lang/${code}.js`), 'utf8');
+    assert.doesNotMatch(pack, /FCFA|€|\$\d/,
+      `${code}.js carries a price; six copies of a number is six chances to disagree`);
+  }
+});

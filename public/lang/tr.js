@@ -140,6 +140,18 @@ export default {
   finish_title: 'Zafer imzası',
   finish_hint: 'Kazandığında rakibinin ekranında da oynar. Görmek için birine dokun.',
   plus_locked: 'Yalnızca SolRush Plus',
+  plus_title: "SolRush Plus",
+  plus_lede: "Oyundaki tüm görsel içerik açık. Bir kez ödenir, sonsuza dek sizin.",
+  plus_item_skins: "Tüm piyon görünümleri",
+  plus_item_photo: "Piyon olarak kendi fotoğrafınız",
+  plus_item_badges: "Adınızın yanındaki tüm rozetler",
+  plus_item_packs: "Tüm ses paketleri",
+  plus_item_finish: "Tüm zafer efektleri — rakibinizin ekranında oynar",
+  plus_once: "tek seferlik — abonelik yok, yenileme yok",
+  plus_buy: "SolRush Plus’ı al",
+  plus_later: "Belki sonra",
+  plus_banner_sub: "Her şeyi bir kerede aç",
+  plus_soon: "Ödeme henüz açık değil. Sıradaki iş bu.",
 
   /* ---- rütbeler ---- */
   rank_wood: 'Ahşap',

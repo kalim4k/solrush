@@ -137,6 +137,18 @@ export default {
   finish_title: 'Firma de victoria',
   finish_hint: 'Se reproduce en la pantalla de tu rival cuando ganas. Toca una para verla.',
   plus_locked: 'Solo con SolRush Plus',
+  plus_title: "SolRush Plus",
+  plus_lede: "Todo lo cosmético del juego, desbloqueado. Se paga una vez y es tuyo para siempre.",
+  plus_item_skins: "Todos los diseños de peón",
+  plus_item_photo: "Tu propia foto como peón",
+  plus_item_badges: "Todas las insignias junto a tu nombre",
+  plus_item_packs: "Todos los packs de sonido",
+  plus_item_finish: "Todas las firmas de victoria, en la pantalla de tu rival",
+  plus_once: "una sola vez: sin suscripción ni renovación",
+  plus_buy: "Conseguir SolRush Plus",
+  plus_later: "Quizá más tarde",
+  plus_banner_sub: "Desbloquéalo todo, de una vez",
+  plus_soon: "El pago aún no está abierto. Es lo próximo que se va a construir.",
 
   /* ---- rangos ---- */
   rank_wood: 'Madera',
