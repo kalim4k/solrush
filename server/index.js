@@ -256,6 +256,97 @@ async function isAdmin(auth) {
   return Boolean(user && allowed.has(String(user.email).toLowerCase()));
 }
 
+const DAY = 86_400_000;
+
+/* The window every admin figure is measured over.
+
+   The browser sends two instants, and it sets them to ITS OWN local midnights —
+   which is what makes "7 days" mean seven of the viewer's days rather than
+   seven UTC days ending at one in the morning. Nothing here needs to know the
+   timezone, because the boundaries arrive already in it.
+
+   Everything is clamped rather than trusted. These values reach generate_series
+   and a per-day subquery, so a range of "since 1970" is not merely a silly
+   answer, it is a query that scans everything once per bucket. Three years is
+   longer than this game has existed. */
+function adminRange(body) {
+  const now = Date.now();
+  let to = Date.parse(body?.to);
+  let from = Date.parse(body?.from);
+  if (!Number.isFinite(to)) to = now;
+  if (!Number.isFinite(from)) from = to - 30 * DAY;
+  if (from > to) [from, to] = [to, from];
+  if (to - from < DAY) from = to - DAY;
+  if (to - from > 1095 * DAY) from = to - 1095 * DAY;
+
+  const days = Math.max(1, Math.round((to - from) / DAY));
+  // Ninety daily bars is a readable chart; three hundred is a grey smear. Past
+  // that the buckets become weeks, and the chart says which it is drawing.
+  const step = days > 120 ? 7 : 1;
+  return {
+    from: new Date(from),
+    to: new Date(to),
+    // The same length again, ending where this window starts. The only
+    // comparison that does not flatter a short range.
+    prevFrom: new Date(from - (to - from)),
+    days,
+    step,
+  };
+}
+
+// Only these may be used to filter the payments table. Anything else is
+// ignored rather than passed through, so the status cannot become a way to
+// smuggle a value into a query.
+const ALLOWED_CART_STATUS = new Set([
+  'completed', 'waiting_payment', 'payment_failed', 'abandoned',
+]);
+
+/* Money and activity over one window, in two queries.
+
+   Written once and called twice — for the range on screen and for the range
+   before it — because a figure with nothing beside it cannot say whether things
+   are getting better. */
+async function windowStats(from, to) {
+  const [money, activity] = await Promise.all([
+    /* One scan of plus_carts answers all of it. The window figures and the
+       all-time ones come back together because the page shows both, and two
+       passes over the same small table to separate them would be ceremony. */
+    one(`SELECT
+           (count(*) FILTER (WHERE status = 'completed'
+                               AND created_at >= $1 AND created_at < $2))::int AS paid,
+           (count(*) FILTER (WHERE status = 'completed' AND amount IS NULL
+                               AND created_at >= $1 AND created_at < $2))::int AS unpriced,
+           (COALESCE(sum(COALESCE(amount, $3)) FILTER (WHERE status = 'completed'
+                               AND created_at >= $1 AND created_at < $2), 0))::int AS revenue,
+           (count(*) FILTER (WHERE created_at >= $1 AND created_at < $2))::int  AS attempts,
+           (count(*) FILTER (WHERE status = 'waiting_payment'))::int            AS pending,
+           (count(*) FILTER (WHERE status = 'completed'))::int                  AS paid_all,
+           (COALESCE(sum(COALESCE(amount, $3))
+                     FILTER (WHERE status = 'completed'), 0))::int              AS revenue_all
+         FROM plus_carts`, [from, to, PRICE]),
+
+    one(`SELECT
+           (SELECT count(*)::int FROM users)             AS accounts,
+           (SELECT count(*)::int FROM users WHERE plus)  AS plus,
+           (SELECT count(*)::int FROM users
+             WHERE created_at >= $1 AND created_at < $2) AS new_users,
+           (SELECT count(*)::int FROM matches
+             WHERE ended_at >= $1 AND ended_at < $2)     AS games,
+           (SELECT count(*)::int FROM matches)           AS games_all,
+           -- distinct people who finished a game in the window, which is the
+           -- closest thing to "players" the tables hold. Guests have no id and
+           -- are not counted; the number is a floor, not a total.
+           (SELECT count(*)::int FROM (
+              SELECT p0_user AS u FROM matches
+               WHERE ended_at >= $1 AND ended_at < $2 AND p0_user IS NOT NULL
+              UNION
+              SELECT p1_user FROM matches
+               WHERE ended_at >= $1 AND ended_at < $2 AND p1_user IS NOT NULL) x) AS players`,
+      [from, to]),
+  ]);
+  return { money, activity };
+}
+
 /* ================= REST ================= */
 
 async function api(req, res, path, url) {
@@ -380,20 +471,17 @@ async function api(req, res, path, url) {
 
     /* ---------- admin ---------- */
 
-    /* Everything the person running this needs to see, in one request.
+    /* Who is connected right now.
 
-       Money moves through this app now, and until this existed there was no way
-       to look at it: a payment that stuck in waiting_payment could only be
-       discovered by the player writing in — and contact@solrush.site bounces,
-       so they would not. */
-    case '/api/admin/overview': {
+       Its own route, and that is the whole point of it. This answer comes from
+       the socket hub rather than from any table — "online" is not a fact the
+       database holds, it is who has a socket open this second — so it costs
+       nothing and can be asked every ten seconds. It used to arrive bolted to
+       the overview, which meant watching the live list re-ran seven aggregate
+       queries against Neon four times a minute, for ever, to refresh a list
+       that was already in memory. */
+    case '/api/admin/live': {
       if (!await isAdmin(auth)) return json(res, 403, { error: 'forbidden' });
-
-      /* Who is connected right now. This comes from the socket hub rather than
-         the database, because "online" is not a fact any table holds — it is
-         who has a socket open this second. Seats held for somebody who dropped
-         mid-game are marked away rather than dropped from the list: they are
-         the ones worth seeing. */
       const online = [];
       for (const c of hub.clients.values()) {
         online.push({
@@ -406,135 +494,189 @@ async function api(req, res, path, url) {
           away: Boolean(c.awaySince),
         });
       }
+      // Seats held for somebody who dropped mid-game are marked away rather
+      // than dropped from the list: they are the ones worth seeing.
       online.sort((a, b) => Number(b.playing) - Number(a.playing) || b.points - a.points);
+      return json(res, 200, {
+        online,
+        live: online.filter((p) => !p.away).length,
+        rooms: hub.rooms ? hub.rooms.size : 0,
+      });
+    }
 
-      const [stats, money, time, session, series, carts, matches] = await Promise.all([
-        one(`SELECT
-               (SELECT count(*)::int FROM users)                                   AS accounts,
-               (SELECT count(*)::int FROM users WHERE plus)                        AS plus,
-               (SELECT count(*)::int FROM users WHERE created_at > now() - interval '7 days') AS new_7d,
-               (SELECT count(*)::int FROM matches WHERE ended_at > now() - interval '1 day')  AS games_1d,
-               (SELECT count(*)::int FROM matches WHERE ended_at > now() - interval '7 days') AS games_7d,
-               (SELECT count(*)::int FROM matches)                                 AS games_all,
-               (SELECT count(*)::int FROM plus_carts)                              AS attempts,
-               (SELECT count(*)::int FROM plus_carts WHERE status = 'waiting_payment') AS pending,
-               -- distinct people who finished a game this week, which is the
-               -- closest thing to "players" the tables hold. Guests have no id
-               -- and are not counted; the number is a floor, not a total.
-               (SELECT count(*)::int FROM (
-                  SELECT p0_user AS u FROM matches
-                   WHERE ended_at > now() - interval '7 days' AND p0_user IS NOT NULL
-                  UNION
-                  SELECT p1_user FROM matches
-                   WHERE ended_at > now() - interval '7 days' AND p1_user IS NOT NULL) x) AS players_7d`),
+    /* The numbers, for one window of time.
 
-        /* Money. Summed from what each sale was recorded as being worth, not
-           from a count multiplied by today's price — the moment the price
-           changes, the second method rewrites history.
+       Everything here is scoped to a range the caller chooses, and the same
+       queries are run a second time over the window immediately before it — so
+       every figure can say whether it is going up or down. A total with nothing
+       to compare it against is a number; a total beside last month's is
+       information.
 
-           Sales made before the amount column existed have no amount of their
-           own and fall back to the catalogue price. That is a guess, so the
-           number of guesses is returned alongside and the page says so; what it
-           must not do is report those sales as worth nothing, which is what
-           SUM over a NULL quietly does. Applied inside the query rather than
-           added on afterwards, so the week, the month and the total are all
-           counted the same way — a headline that included the estimate while
-           "7 derniers jours" did not was a discrepancy with no explanation. */
-        one(`SELECT
-               count(*)::int                                                       AS paid,
-               (count(*) FILTER (WHERE amount IS NULL))::int                       AS unpriced,
-               (COALESCE(sum(COALESCE(amount, $1)), 0))::int                        AS all_time,
-               (COALESCE(sum(COALESCE(amount, $1)) FILTER (WHERE created_at > now() - interval '30 days'), 0))::int AS d30,
-               (COALESCE(sum(COALESCE(amount, $1)) FILTER (WHERE created_at > now() - interval '7 days'), 0))::int  AS d7,
-               (count(*) FILTER (WHERE created_at > now() - interval '30 days'))::int AS paid_30d
-             FROM plus_carts WHERE status = 'completed'`, [PRICE]),
+       Money moves through this app now, and until this existed there was no way
+       to look at it: a payment that stuck in waiting_payment could only be
+       discovered by the player writing in — and contact@solrush.site bounces,
+       so they would not. */
+    case '/api/admin/overview': {
+      if (!await isAdmin(auth)) return json(res, 403, { error: 'forbidden' });
+      const r = adminRange(body);
 
-        /* How long a game lasts.
-           The median is here beside the mean on purpose: a single match left
-           open on a forgotten tab drags an average anywhere, and the median
-           does not move. Anything past two hours is discarded outright as a
-           tab nobody closed rather than a game somebody played. */
+      /* Both windows in one round trip. The previous window is the same length
+         ending where this one starts, which is the only comparison that does
+         not flatter a short range: "this week against last week", never "this
+         week against the whole of last month". */
+      const [now_, prev, time, session, series] = await Promise.all([
+        windowStats(r.from, r.to),
+        windowStats(r.prevFrom, r.from),
         one(`SELECT
                (COALESCE(avg(secs), 0))::int                                       AS avg_game,
                (COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY secs), 0))::int AS med_game,
-               (COALESCE(sum(secs) FILTER (WHERE ended_at > now() - interval '7 days'), 0))::int AS played_7d,
-               (COALESCE(sum(secs), 0))::int                                       AS played_all,
+               (COALESCE(sum(secs), 0))::int                                       AS played,
                count(*)::int                                                       AS counted
-             FROM (SELECT ended_at, EXTRACT(epoch FROM ended_at - started_at) AS secs
+             FROM (SELECT EXTRACT(epoch FROM ended_at - started_at) AS secs
                      FROM matches
-                    WHERE ended_at IS NOT NULL AND ended_at > started_at
-                      AND ended_at - started_at < interval '2 hours') t`),
+                    WHERE ended_at >= $1 AND ended_at < $2
+                      AND ended_at > started_at
+                      /* Past two hours it is a tab nobody closed rather than a
+                         game somebody played, and one of those drags an
+                         average anywhere it likes. */
+                      AND ended_at - started_at < interval '2 hours') t`,
+          [r.from, r.to]),
 
         /* How long people stay, which is a different question from how long a
            game lasts — most of the time on this site is spent in the menus, on
            the leaderboard and waiting for an opponent. The browser reports the
            seconds it was actually visible; this adds them up per device per
            day, so somebody who opens the game four times in an evening counts
-           once, with their evening's total. */
+           once, with their evening's total.
+
+           The day is counted from the start of the range, which the browser
+           sets to its own local midnight — so the buckets are the viewer's
+           days and no timezone has to be passed or guessed. */
         one(`WITH s AS (
-               SELECT device, date_trunc('day', at) AS day,
+               SELECT device,
+                      floor(EXTRACT(epoch FROM (at - $1::timestamptz)) / 86400)::int AS day,
                       sum(LEAST(GREATEST((meta->>'s')::int, 0), 7200)) AS secs
                  FROM events
                 WHERE name = 'session' AND device IS NOT NULL
-                  AND at > now() - interval '30 days'
+                  AND at >= $1 AND at < $2
                   AND (meta->>'s') ~ '^[0-9]+$'
                 GROUP BY 1, 2)
              SELECT (COALESCE(avg(secs), 0))::int AS avg_day,
                     count(*)::int                 AS device_days,
-                    (COALESCE(count(DISTINCT device), 0))::int AS devices
-               FROM s`),
+                    (COALESCE(count(DISTINCT device), 0))::int AS devices,
+                    (COALESCE(sum(secs), 0))::int AS total
+               FROM s`, [r.from, r.to]),
 
-        // Fourteen days, for the chart. Zero-filled by generate_series, so a
-        // day nobody played is a gap in the bars rather than a missing column.
+        /* The chart. Zero-filled by generate_series, so a day nobody played is
+           a gap in the bars rather than a missing column — and bucketed in
+           weeks once the range is long enough that daily bars would be hair
+           thin and unreadable. */
         q(`SELECT to_char(d, 'YYYY-MM-DD') AS day,
                   (SELECT count(*) FROM matches m
-                    WHERE m.ended_at >= d AND m.ended_at < d + interval '1 day')::int AS games,
+                    WHERE m.ended_at >= d AND m.ended_at < d + make_interval(days => $3))::int AS games,
                   (SELECT count(*) FROM users u
-                    WHERE u.created_at >= d AND u.created_at < d + interval '1 day')::int AS signups,
-                  (SELECT COALESCE(sum(COALESCE(c.amount, $1)), 0) FROM plus_carts c
+                    WHERE u.created_at >= d AND u.created_at < d + make_interval(days => $3))::int AS signups,
+                  (SELECT COALESCE(sum(COALESCE(c.amount, $4)), 0) FROM plus_carts c
                     WHERE c.status = 'completed'
-                      AND c.created_at >= d AND c.created_at < d + interval '1 day')::int AS revenue
-             FROM generate_series(date_trunc('day', now()) - interval '13 days',
-                                  date_trunc('day', now()), interval '1 day') d
-            ORDER BY d`, [PRICE]),
-
-        q(`SELECT c.cart_id, c.status, c.created_at, c.checked_at, c.amount, u.nick, u.email, u.plus
-             FROM plus_carts c JOIN users u ON u.id = c.user_id
-            ORDER BY c.created_at DESC LIMIT 25`),
-        q(`SELECT token, mode, p0_nick, p1_nick, winner, reason, moves, started_at, ended_at
-             FROM matches WHERE ended_at IS NOT NULL
-            ORDER BY ended_at DESC LIMIT 15`),
+                      AND c.created_at >= d AND c.created_at < d + make_interval(days => $3))::int AS revenue
+             FROM generate_series($1::timestamptz,
+                                  $2::timestamptz - interval '1 second',
+                                  make_interval(days => $3)) d
+            ORDER BY d`, [r.from, r.to, r.step, PRICE]),
       ]);
 
       return json(res, 200, {
-        online,
-        stats,
-        money,
+        range: { from: r.from.toISOString(), to: r.to.toISOString(), days: r.days, step: r.step },
+        money: now_.money,
+        activity: now_.activity,
+        was: { money: prev.money, activity: prev.activity },
         time,
         session,
         series: series.rows,
         // The catalogue price, so the page can label the currency and price a
-        // sale that predates the amount column.
+        // sale made before amounts were being recorded.
         price: PRICE,
-        carts: carts.rows,
-        matches: matches.rows,
         payments: plusConfigured(),
       });
     }
 
+    /* Payments, filtered and paged.
+
+       Split out of the overview because this is the table somebody actually
+       works from — "show me everything that failed last month" is a question,
+       and it was previously answered by the last twenty-five rows of anything
+       at all. */
+    case '/api/admin/payments': {
+      if (!await isAdmin(auth)) return json(res, 403, { error: 'forbidden' });
+      const r = adminRange(body);
+      const status = ALLOWED_CART_STATUS.has(String(body.status)) ? String(body.status) : null;
+      const limit = Math.min(200, Math.max(1, Number(body.limit) || 50));
+      const offset = Math.max(0, Number(body.offset) || 0);
+
+      const [rows, total] = await Promise.all([
+        q(`SELECT c.cart_id, c.status, c.created_at, c.checked_at, c.amount,
+                  u.nick, u.email, u.plus
+             FROM plus_carts c JOIN users u ON u.id = c.user_id
+            WHERE c.created_at >= $1 AND c.created_at < $2
+              AND ($3::text IS NULL OR c.status = $3)
+            ORDER BY c.created_at DESC
+            LIMIT $4 OFFSET $5`, [r.from, r.to, status, limit, offset]),
+        one(`SELECT count(*)::int AS n FROM plus_carts
+              WHERE created_at >= $1 AND created_at < $2
+                AND ($3::text IS NULL OR status = $3)`, [r.from, r.to, status]),
+      ]);
+      return json(res, 200, { rows: rows.rows, total: total.n, limit, offset, price: PRICE });
+    }
+
+    // Finished games, filtered and paged, for the same reason.
+    case '/api/admin/matches': {
+      if (!await isAdmin(auth)) return json(res, 403, { error: 'forbidden' });
+      const r = adminRange(body);
+      const limit = Math.min(200, Math.max(1, Number(body.limit) || 50));
+      const offset = Math.max(0, Number(body.offset) || 0);
+
+      const [rows, total] = await Promise.all([
+        q(`SELECT token, mode, p0_nick, p1_nick, winner, reason, moves, started_at, ended_at
+             FROM matches
+            WHERE ended_at >= $1 AND ended_at < $2
+            ORDER BY ended_at DESC
+            LIMIT $3 OFFSET $4`, [r.from, r.to, limit, offset]),
+        one(`SELECT count(*)::int AS n FROM matches
+              WHERE ended_at >= $1 AND ended_at < $2`, [r.from, r.to]),
+      ]);
+      return json(res, 200, { rows: rows.rows, total: total.n, limit, offset });
+    }
+
     // Find somebody. Email or nickname, because a player writing in gives you
     // whichever they remember.
+    /* People. A search when there is something to search for, and a list when
+       there is not.
+
+       The empty case used to return nothing at all, which made the players page
+       a blank box with a cursor in it — no way to see who the top players are,
+       who signed up this week, or who has Plus, without already knowing a name
+       to type. */
     case '/api/admin/players': {
       if (!await isAdmin(auth)) return json(res, 403, { error: 'forbidden' });
       const term = String(body.q || '').trim().slice(0, 80);
-      if (term.length < 2) return json(res, 200, { rows: [] });
-      const rows = await q(
-        `SELECT id, email, nick, points, wins, losses, plus, veteran, created_at, last_seen
-           FROM users
-          WHERE email ILIKE '%' || $1 || '%' OR nick ILIKE '%' || $1 || '%'
-          ORDER BY last_seen DESC LIMIT 25`, [term],
-      );
-      return json(res, 200, { rows: rows.rows });
+      const limit = Math.min(100, Math.max(1, Number(body.limit) || 25));
+      // An allowlist, not a string dropped into the query: this is an ORDER BY,
+      // which no parameter placeholder can stand in for.
+      const ORDER = {
+        points: 'points DESC, wins DESC',
+        recent: 'last_seen DESC',
+        new: 'created_at DESC',
+        plus: 'plus DESC, created_at DESC',
+      };
+      const by = ORDER[String(body.sort)] || ORDER.recent;
+
+      const cols = `id, email, nick, points, wins, losses, plus, veteran, created_at, last_seen`;
+      const rows = term.length >= 2
+        ? await q(`SELECT ${cols} FROM users
+                    WHERE email ILIKE '%' || $1 || '%' OR nick ILIKE '%' || $1 || '%'
+                    ORDER BY ${by} LIMIT $2`, [term, limit])
+        : await q(`SELECT ${cols} FROM users ORDER BY ${by} LIMIT $1`, [limit]);
+      return json(res, 200, { rows: rows.rows, searched: term.length >= 2 });
     }
 
     /* Grant or revoke Plus by hand.

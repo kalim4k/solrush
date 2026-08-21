@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#f6f7fb">
+    <meta name="theme-color" content="#f7f8fb">
     <title>SolRush — Administration</title>
 
     <!-- Never indexed, never followed, never cached by a crawler. A panel that
@@ -15,68 +15,79 @@
 
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
 
-    <!-- Self-contained, like the rules pages: the app stylesheet is built
+    <!-- Self-contained, like the rules pages: the game's stylesheet is built
          around the game's own markup and carries the whole board with it.
 
-         The palette here is deliberately NOT the game's. The game is a toy and
-         is coloured like one; this is a page for reading numbers off, and the
-         thing that makes numbers readable is that almost nothing else on the
-         page is competing for attention. One accent, hairline borders, no
-         gradients, no shadows beyond a single hairline lift. -->
+         The palette is deliberately NOT the game's. The game is a toy and is
+         coloured like one; this is a page for reading numbers off, and what
+         makes numbers readable is that almost nothing else competes for
+         attention. One accent, hairline borders, no gradients. -->
     <style>
         :root {
-            --bg: #f6f7fb;
-            --card: #ffffff;
-            --line: #e7eaf3;
-            --line-soft: #eef1f7;
-            --text: #10131f;
-            --muted: #6f7690;
-            --faint: #9aa1b8;
+            --bg: #f7f8fb;
+            --panel: #ffffff;
+            --side: #fbfcfe;
+            --line: #e6e9f2;
+            --line-soft: #eff1f7;
+            --text: #0f1320;
+            --muted: #666e88;
+            --faint: #98a0b6;
             --accent: #2f6df6;
             --accent-soft: rgba(47, 109, 246, .1);
-            --good: #12a06a;
+            --up: #12a06a;
+            --up-soft: rgba(18, 160, 106, .12);
+            --down: #d34550;
+            --down-soft: rgba(211, 69, 80, .1);
             --warn: #b8791a;
-            --bad: #d34550;
-            --gold: #9a7715;
-            --gold-soft: rgba(224, 182, 74, .18);
+            --warn-soft: rgba(184, 121, 26, .13);
+            --gold: #8f6d10;
+            --gold-soft: rgba(224, 182, 74, .2);
             color-scheme: light;
         }
 
         @media (prefers-color-scheme: dark) {
             :root:not([data-theme="light"]) {
-                --bg: #0d0f16;
-                --card: #151824;
-                --line: #242938;
-                --line-soft: #1d2130;
+                --bg: #0b0d13;
+                --panel: #14171f;
+                --side: #101319;
+                --line: #232838;
+                --line-soft: #1b1f2b;
                 --text: #eef0f7;
-                --muted: #8f97b0;
-                --faint: #6b7391;
+                --muted: #8d95ad;
+                --faint: #666e8a;
                 --accent: #6f9bff;
-                --accent-soft: rgba(111, 155, 255, .14);
-                --good: #35c98d;
+                --accent-soft: rgba(111, 155, 255, .15);
+                --up: #35c98d;
+                --up-soft: rgba(53, 201, 141, .14);
+                --down: #f0737d;
+                --down-soft: rgba(240, 115, 125, .13);
                 --warn: #e0a13a;
-                --bad: #f0737d;
+                --warn-soft: rgba(224, 161, 58, .14);
                 --gold: #e0b64a;
-                --gold-soft: rgba(224, 182, 74, .16);
+                --gold-soft: rgba(224, 182, 74, .14);
                 color-scheme: dark;
             }
         }
 
         :root[data-theme="dark"] {
-            --bg: #0d0f16;
-            --card: #151824;
-            --line: #242938;
-            --line-soft: #1d2130;
+            --bg: #0b0d13;
+            --panel: #14171f;
+            --side: #101319;
+            --line: #232838;
+            --line-soft: #1b1f2b;
             --text: #eef0f7;
-            --muted: #8f97b0;
-            --faint: #6b7391;
+            --muted: #8d95ad;
+            --faint: #666e8a;
             --accent: #6f9bff;
-            --accent-soft: rgba(111, 155, 255, .14);
-            --good: #35c98d;
+            --accent-soft: rgba(111, 155, 255, .15);
+            --up: #35c98d;
+            --up-soft: rgba(53, 201, 141, .14);
+            --down: #f0737d;
+            --down-soft: rgba(240, 115, 125, .13);
             --warn: #e0a13a;
-            --bad: #f0737d;
+            --warn-soft: rgba(224, 161, 58, .14);
             --gold: #e0b64a;
-            --gold-soft: rgba(224, 182, 74, .16);
+            --gold-soft: rgba(224, 182, 74, .14);
             color-scheme: dark;
         }
 
@@ -92,355 +103,297 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Every figure on this page is read by comparing it with the one above
-           it, and proportional digits make columns of numbers wobble. */
-        b,
+        /* Every figure here is read by comparing it with the one above it, and
+           proportional digits make columns of numbers wobble. */
         .num,
+        .big,
         td,
-        th {
+        th,
+        .tile b {
             font-variant-numeric: tabular-nums;
         }
 
-        .wrap {
-            max-width: 1080px;
-            margin: 0 auto;
-            padding: 0 16px calc(64px + env(safe-area-inset-bottom, 0px));
+        svg.i {
+            width: 18px;
+            height: 18px;
+            flex: none;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.7;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
-        /* ---------- top bar ---------- */
-        .bar {
+        /* ================= frame ================= */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .side {
+            width: 232px;
+            flex: none;
+            background: var(--side);
+            border-inline-end: 1px solid var(--line);
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
             position: sticky;
             top: 0;
-            z-index: 5;
-            background: color-mix(in srgb, var(--bg) 88%, transparent);
-            backdrop-filter: saturate(1.4) blur(10px);
-            border-bottom: 1px solid var(--line);
+            height: 100vh;
         }
 
-        .bar-in {
-            max-width: 1080px;
-            margin: 0 auto;
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .mark {
+        .brand {
             font-weight: 700;
-            letter-spacing: -.01em;
-            font-size: .98rem;
-            white-space: nowrap;
+            font-size: 1rem;
+            letter-spacing: -.015em;
+            padding: 4px 10px 14px;
         }
 
-        .mark span {
+        .brand span {
             color: var(--faint);
             font-weight: 500;
         }
 
-        .bar-in .spacer {
-            flex: 1;
+        .side nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
 
-        .live {
-            display: inline-flex;
+        .side nav button {
+            display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: .78rem;
+            gap: 10px;
+            width: 100%;
+            text-align: start;
+            border: 0;
+            background: transparent;
             color: var(--muted);
-            white-space: nowrap;
+            font: inherit;
+            font-size: .9rem;
+            font-weight: 550;
+            padding: 9px 10px;
+            border-radius: 9px;
+            cursor: pointer;
         }
 
-        .beat {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--good);
-        }
-
-        /* One slow pulse. Enough to say the page is refreshing itself, quiet
-           enough to leave open on a desk. */
-        @media (prefers-reduced-motion: no-preference) {
-            .beat {
-                animation: beat 2.4s ease-in-out infinite;
-            }
-        }
-
-        @keyframes beat {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: .25;
-            }
-        }
-
-        a {
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        a.quiet {
-            color: var(--muted);
-            font-weight: 500;
-            font-size: .84rem;
-        }
-
-        a.quiet:hover {
+        .side nav button:hover {
+            background: var(--line-soft);
             color: var(--text);
         }
 
-        /* ---------- sections ---------- */
-        section {
-            margin: 30px 0 0;
+        .side nav button[aria-current="page"] {
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-weight: 650;
         }
 
-        .sec-head {
-            display: flex;
-            align-items: baseline;
-            gap: 10px;
-            margin: 0 0 12px;
-            /* On a phone the chart's heading, its three-way switch and its
-               total do not fit on one line, and without this they squeeze
-               instead of wrapping: "14 derniers jours" came out stacked one
-               word per line beside a crushed segmented control. */
-            flex-wrap: wrap;
-        }
-
-        .sec-head h2 {
-            font-size: .74rem;
-            margin: 0;
-            text-transform: uppercase;
-            letter-spacing: .1em;
-            color: var(--faint);
-            font-weight: 700;
-        }
-
-        .sec-head .note {
-            font-size: .78rem;
-            color: var(--faint);
+        .side nav .tag {
             margin-inline-start: auto;
-            text-align: end;
-        }
-
-        .card {
-            background: var(--card);
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            padding: 16px 18px;
-        }
-
-        /* ---------- the money headline ---------- */
-        .hero {
-            display: grid;
-            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-            gap: 0;
-            overflow: hidden;
-            padding: 0;
-        }
-
-        .hero-main {
-            padding: 22px 20px;
-        }
-
-        .hero-main .amount {
-            font-size: clamp(2rem, 7vw, 2.9rem);
+            font-size: .72rem;
             font-weight: 700;
-            letter-spacing: -.03em;
-            line-height: 1.05;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: var(--up-soft);
+            color: var(--up);
         }
 
-        .hero-main .amount i {
-            font-style: normal;
-            font-size: .42em;
-            font-weight: 600;
-            color: var(--muted);
-            margin-inline-start: .35em;
-            letter-spacing: 0;
-        }
-
-        .hero-main .cap {
-            font-size: .78rem;
-            color: var(--faint);
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-
-        .hero-side {
-            border-inline-start: 1px solid var(--line-soft);
-            display: grid;
-            grid-template-rows: repeat(2, 1fr);
-        }
-
-        .hero-side div {
-            padding: 14px 18px;
+        .side-foot {
+            margin-top: auto;
+            padding: 10px;
+            border-top: 1px solid var(--line);
             display: flex;
-            align-items: baseline;
+            align-items: center;
             gap: 8px;
         }
 
-        .hero-side div+div {
-            border-top: 1px solid var(--line-soft);
-        }
-
-        .hero-side b {
-            font-size: 1.1rem;
-            font-weight: 700;
-        }
-
-        .hero-side small {
-            color: var(--muted);
-            font-size: .8rem;
-        }
-
-        @media (max-width: 620px) {
-            .hero {
-                grid-template-columns: 1fr;
-            }
-
-            .hero-side {
-                border-inline-start: 0;
-                border-top: 1px solid var(--line-soft);
-                grid-template-columns: 1fr 1fr;
-                grid-template-rows: none;
-            }
-
-            .hero-side div+div {
-                border-top: 0;
-                border-inline-start: 1px solid var(--line-soft);
-            }
-
-            /* Half a phone's width is not enough for "1 000 F" and "30
-               derniers jours" side by side: the amount broke across two lines
-               between the number and its currency. Stacked, both fit. */
-            .hero-side div {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 2px;
-                padding: 12px 14px;
-            }
-
-            .hero-side b {
-                white-space: nowrap;
-            }
-        }
-
-        /* ---------- stat tiles ---------- */
-        /* auto-fit alone fits as many as will go, which on a wide screen put
-           seven of the eight activity tiles on one row and left the eighth
-           sitting on its own underneath. Below the breakpoint the count is
-           whatever fits; above it, the row length is chosen to divide the
-           number of tiles in each section — eight in fours, six in threes. */
-        .tiles {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-            gap: 10px;
-        }
-
-        @media (min-width: 760px) {
-            .tiles.by4 {
-                grid-template-columns: repeat(4, 1fr);
-            }
-
-            .tiles.by3 {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        .tile {
-            background: var(--card);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 13px 14px;
-        }
-
-        .tile b {
-            display: block;
-            font-size: 1.45rem;
-            font-weight: 700;
-            letter-spacing: -.02em;
-            line-height: 1.15;
-        }
-
-        .tile span {
-            font-size: .77rem;
-            color: var(--muted);
-        }
-
-        .tile em {
-            font-style: normal;
-            display: block;
-            font-size: .72rem;
-            color: var(--faint);
-            margin-top: 3px;
-        }
-
-        .tile.alert {
-            border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
-        }
-
-        .tile.alert b {
-            color: var(--warn);
-        }
-
-        /* ---------- chart ---------- */
-        .chart {
-            display: flex;
-            align-items: flex-end;
-            gap: 3px;
-            height: 132px;
-            margin-top: 4px;
-        }
-
-        .col {
+        .main {
             flex: 1;
             min-width: 0;
-            height: 100%;
             display: flex;
             flex-direction: column;
-            justify-content: flex-end;
-            gap: 6px;
-            border-radius: 6px;
-            padding: 0 1px;
         }
 
-        .col i {
-            display: block;
-            background: var(--accent);
-            border-radius: 5px 5px 3px 3px;
-            min-height: 3px;
-            opacity: .9;
-        }
-
-        /* Today is the column being watched; the rest are history. */
-        .col.today i {
-            outline: 2px solid var(--accent-soft);
-        }
-
-        .col.zero i {
-            background: var(--line);
-        }
-
-        .x-axis {
+        .top {
+            position: sticky;
+            top: 0;
+            z-index: 4;
+            background: color-mix(in srgb, var(--bg) 86%, transparent);
+            backdrop-filter: saturate(1.5) blur(10px);
+            border-bottom: 1px solid var(--line);
+            padding: 12px 20px;
             display: flex;
-            gap: 3px;
-            margin-top: 8px;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
-        .x-axis span {
-            flex: 1;
-            min-width: 0;
-            text-align: center;
-            font-size: .66rem;
+        .top h1 {
+            font-size: 1.02rem;
+            margin: 0;
+            font-weight: 650;
+            letter-spacing: -.01em;
+        }
+
+        .top .when {
+            font-size: .78rem;
             color: var(--faint);
             white-space: nowrap;
-            overflow: hidden;
+        }
+
+        .tools {
+            margin-inline-start: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .burger {
+            display: none;
+        }
+
+        .view {
+            padding: 20px;
+            max-width: 1180px;
+            width: 100%;
+        }
+
+        .scrim {
+            display: none;
+        }
+
+        /* ---------- phone: the sidebar becomes a drawer ---------- */
+        @media (max-width: 900px) {
+            .side {
+                position: fixed;
+                inset-block: 0;
+                inset-inline-start: 0;
+                z-index: 20;
+                transform: translateX(-105%);
+                transition: transform .22s cubic-bezier(.2, .8, .3, 1);
+                box-shadow: 0 0 40px rgba(0, 0, 0, .25);
+            }
+
+            html[dir="rtl"] .side {
+                transform: translateX(105%);
+            }
+
+            body.open .side {
+                transform: none;
+            }
+
+            .scrim {
+                display: block;
+                position: fixed;
+                inset: 0;
+                z-index: 15;
+                background: rgba(8, 10, 16, .45);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity .22s ease;
+            }
+
+            body.open .scrim {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .burger {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 7px;
+            }
+
+            .view {
+                padding: 16px 14px calc(40px + env(safe-area-inset-bottom, 0px));
+            }
+
+            .top {
+                padding: 10px 14px;
+            }
+
+            /* The six presets fill a phone's width on their own, which pushed
+               the refresh button onto a line of its own — a whole row of
+               chrome for one icon. They share a line instead, and the presets
+               scroll sideways inside their own strip if they have to. */
+            .tools {
+                width: 100%;
+                margin-inline-start: 0;
+                flex-wrap: nowrap;
+            }
+
+            .tools .seg {
+                flex: 1;
+                min-width: 0;
+                overflow-x: auto;
+                scrollbar-width: none;
+            }
+
+            .tools .seg::-webkit-scrollbar {
+                display: none;
+            }
+
+            .tools>button {
+                flex: none;
+            }
+
+            /* Two date fields and a button do not fit beside each other at
+               390px; let them wrap onto their own line. */
+            #custom {
+                width: 100%;
+            }
+
+            #custom input {
+                flex: 1;
+                min-width: 120px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .side,
+            .scrim {
+                transition: none;
+            }
+        }
+
+        /* ================= controls ================= */
+        button {
+            font: inherit;
+            cursor: pointer;
+            border-radius: 9px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text);
+            padding: 7px 12px;
+            font-size: .84rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        button.solid {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        button.solid:hover:not(:disabled) {
+            color: #fff;
+            filter: brightness(1.07);
+        }
+
+        button:disabled {
+            opacity: .5;
+            cursor: default;
         }
 
         .seg {
@@ -456,30 +409,336 @@
             border: 0;
             background: transparent;
             color: var(--muted);
-            font: inherit;
-            font-size: .78rem;
-            font-weight: 600;
             padding: 4px 10px;
             border-radius: 8px;
-            cursor: pointer;
+            font-size: .8rem;
+        }
+
+        .seg button:hover:not(:disabled) {
+            color: var(--text);
         }
 
         .seg button[aria-pressed="true"] {
-            background: var(--card);
+            background: var(--panel);
             color: var(--text);
-            box-shadow: 0 1px 2px rgba(16, 19, 31, .07);
+            box-shadow: 0 1px 2px rgba(15, 19, 32, .08);
+        }
+
+        input,
+        select {
+            font: inherit;
+            padding: 8px 11px;
+            border-radius: 9px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text);
+            font-size: .86rem;
+        }
+
+        input:focus,
+        select:focus {
+            outline: 2px solid var(--accent-soft);
+            border-color: var(--accent);
+        }
+
+        input.grow {
+            flex: 1;
+            min-width: 0;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        a.quiet {
+            color: var(--muted);
+            font-weight: 500;
+            font-size: .85rem;
+        }
+
+        a.quiet:hover {
+            color: var(--text);
+        }
+
+        /* ================= blocks ================= */
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 16px 18px;
+        }
+
+        section {
+            margin: 0 0 22px;
+        }
+
+        .sec-head {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 0 0 11px;
+        }
+
+        .sec-head h2 {
+            font-size: .72rem;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--faint);
+            font-weight: 700;
+        }
+
+        .sec-head .note {
+            font-size: .78rem;
+            color: var(--faint);
+            margin-inline-start: auto;
+        }
+
+        /* ---------- the headline figure ---------- */
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .hero-main {
+            padding: 20px;
+        }
+
+        .cap {
+            font-size: .72rem;
+            color: var(--faint);
+            text-transform: uppercase;
+            letter-spacing: .09em;
+            font-weight: 700;
+            margin-bottom: 7px;
+        }
+
+        .big {
+            font-size: clamp(1.9rem, 6vw, 2.7rem);
+            font-weight: 700;
+            letter-spacing: -.035em;
+            line-height: 1.04;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .big i {
+            font-style: normal;
+            font-size: .38em;
+            font-weight: 600;
+            color: var(--muted);
+            letter-spacing: 0;
+        }
+
+        .hero-side {
+            border-inline-start: 1px solid var(--line-soft);
+            display: grid;
+        }
+
+        .hero-side div {
+            padding: 13px 18px;
+            display: flex;
+            align-items: baseline;
+            gap: 9px;
+        }
+
+        .hero-side div+div {
+            border-top: 1px solid var(--line-soft);
+        }
+
+        .hero-side b {
+            font-size: 1.05rem;
+        }
+
+        .hero-side small {
+            color: var(--muted);
+            font-size: .79rem;
+        }
+
+        @media (max-width: 700px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-side {
+                border-inline-start: 0;
+                border-top: 1px solid var(--line-soft);
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .hero-side div {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1px;
+                padding: 12px 14px;
+            }
+
+            .hero-side div+div {
+                border-top: 0;
+                border-inline-start: 1px solid var(--line-soft);
+            }
+        }
+
+        /* ---------- change against the previous window ---------- */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: .74rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            white-space: nowrap;
+            letter-spacing: 0;
+        }
+
+        .chip.up {
+            background: var(--up-soft);
+            color: var(--up);
+        }
+
+        .chip.down {
+            background: var(--down-soft);
+            color: var(--down);
+        }
+
+        .chip.flat {
+            background: var(--line-soft);
+            color: var(--faint);
+        }
+
+        /* ---------- tiles ---------- */
+        .tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        @media (min-width: 780px) {
+            .tiles.by4 {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .tiles.by3 {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .tile {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 13px;
+            padding: 13px 14px;
+        }
+
+        .tile b {
+            display: block;
+            font-size: 1.42rem;
+            font-weight: 700;
+            letter-spacing: -.022em;
+            line-height: 1.15;
+        }
+
+        .tile .lab {
+            font-size: .78rem;
+            color: var(--muted);
+        }
+
+        .tile em {
+            font-style: normal;
+            display: block;
+            font-size: .72rem;
+            color: var(--faint);
+            margin-top: 3px;
+        }
+
+        .tile .chip {
+            margin-top: 6px;
+        }
+
+        .tile.alert {
+            border-color: color-mix(in srgb, var(--warn) 50%, var(--line));
+        }
+
+        .tile.alert b {
+            color: var(--warn);
+        }
+
+        /* ---------- chart ---------- */
+        .chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 148px;
+        }
+
+        .col {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+            padding: 0 1px;
+        }
+
+        .col i {
+            display: block;
+            width: 100%;
+            background: var(--accent);
+            border-radius: 4px 4px 2px 2px;
+            min-height: 2px;
+        }
+
+        .col.zero i {
+            background: var(--line);
+        }
+
+        .col.last i {
+            background: color-mix(in srgb, var(--accent) 70%, #fff);
+            outline: 1.5px solid var(--accent);
+        }
+
+        .x-axis {
+            display: flex;
+            gap: 2px;
+            margin-top: 8px;
+        }
+
+        .x-axis span {
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            font-size: .66rem;
+            color: var(--faint);
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .y-top {
+            font-size: .7rem;
+            color: var(--faint);
+            border-bottom: 1px dashed var(--line);
+            padding-bottom: 2px;
+            margin-bottom: 6px;
         }
 
         /* ---------- tables ---------- */
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: .89rem;
+            font-size: .88rem;
         }
 
         th {
             text-align: start;
-            font-size: .7rem;
+            font-size: .69rem;
             text-transform: uppercase;
             letter-spacing: .07em;
             color: var(--faint);
@@ -493,7 +752,7 @@
             vertical-align: middle;
         }
 
-        tr:first-child td {
+        tbody tr:first-child td {
             border-top: 0;
         }
 
@@ -515,27 +774,26 @@
 
         .pill {
             display: inline-block;
-            padding: 2px 9px;
+            padding: 2px 8px;
             border-radius: 999px;
             font-size: .72rem;
             font-weight: 700;
             white-space: nowrap;
-            border: 1px solid transparent;
         }
 
         .pill.ok {
-            background: color-mix(in srgb, var(--good) 13%, transparent);
-            color: var(--good);
+            background: var(--up-soft);
+            color: var(--up);
         }
 
         .pill.wait {
-            background: color-mix(in srgb, var(--warn) 15%, transparent);
+            background: var(--warn-soft);
             color: var(--warn);
         }
 
         .pill.no {
-            background: color-mix(in srgb, var(--bad) 12%, transparent);
-            color: var(--bad);
+            background: var(--down-soft);
+            color: var(--down);
         }
 
         .pill.plus {
@@ -549,7 +807,7 @@
             height: 7px;
             border-radius: 50%;
             margin-inline-end: 7px;
-            background: var(--good);
+            background: var(--up);
             vertical-align: middle;
         }
 
@@ -557,83 +815,65 @@
             background: var(--faint);
         }
 
-        button {
-            font: inherit;
-            cursor: pointer;
-            border-radius: 10px;
-            border: 1px solid var(--line);
-            background: var(--card);
-            color: var(--text);
-            padding: 7px 13px;
-            font-size: .82rem;
-            font-weight: 600;
-            white-space: nowrap;
+        .beat {
+            animation: none;
         }
 
-        button:hover:not(:disabled) {
-            border-color: var(--accent);
-            color: var(--accent);
+        @media (prefers-reduced-motion: no-preference) {
+            .beat {
+                animation: beat 2.4s ease-in-out infinite;
+            }
         }
 
-        button.solid {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
+        @keyframes beat {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .3;
+            }
         }
 
-        button.solid:hover:not(:disabled) {
-            color: #fff;
-            filter: brightness(1.06);
-        }
-
-        button:disabled {
-            opacity: .5;
-            cursor: default;
-        }
-
-        input {
-            font: inherit;
-            width: 100%;
-            padding: 11px 13px;
-            border-radius: 11px;
-            border: 1px solid var(--line);
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        input:focus {
-            outline: 2px solid var(--accent-soft);
-            border-color: var(--accent);
+        .empty {
+            color: var(--faint);
+            font-size: .87rem;
+            padding: 6px 0;
+            margin: 0;
         }
 
         .row {
             display: flex;
             gap: 8px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
-        .empty {
-            color: var(--faint);
-            font-size: .87rem;
-            padding: 4px 0;
-            margin: 0;
+        .more {
+            margin-top: 12px;
+            text-align: center;
         }
 
         .gate {
             max-width: 440px;
-            margin: 15vh auto;
+            margin: 14vh auto;
             text-align: center;
         }
 
-        .gate p {
-            margin: 0 0 12px;
+        .skel {
+            color: var(--faint);
+            font-size: .87rem;
+            padding: 30px 0;
+            text-align: center;
         }
 
-        @media (max-width: 620px) {
+        @media (max-width: 700px) {
 
-            /* One row becomes one block. The header cells are gone and each
-               value carries its own label instead — a payment row read one
-               thumb-width at a time is a payment row nobody reads. */
+            /* One row becomes one block. The header cells go and each value
+               carries its own label — a payment row read one thumb-width at a
+               time is a payment row nobody reads. */
             table,
             tbody,
             tr,
@@ -646,12 +886,12 @@
                 display: none;
             }
 
-            tr {
+            tbody tr {
                 border-top: 1px solid var(--line-soft);
                 padding: 12px 0 10px;
             }
 
-            tr:first-child {
+            tbody tr:first-child {
                 border-top: 0;
                 padding-top: 2px;
             }
@@ -669,7 +909,7 @@
             td[data-label]::before {
                 content: attr(data-label) " ";
                 color: var(--faint);
-                font-size: .7rem;
+                font-size: .69rem;
                 text-transform: uppercase;
                 letter-spacing: .06em;
                 font-weight: 700;
@@ -679,18 +919,68 @@
 </head>
 
 <body>
-    <div class="bar">
-        <div class="bar-in">
-            <div class="mark">SolRush <span>· Administration</span></div>
-            <div class="spacer"></div>
-            <span class="live" id="live" hidden><i class="beat"></i><span id="refreshed"></span></span>
-            <a class="quiet" href="/">le jeu ↗</a>
-        </div>
-    </div>
+    <!-- One sprite, six icons, no network request. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <symbol id="ic-overview" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="2" />
+                <rect x="14" y="3" width="7" height="7" rx="2" />
+                <rect x="3" y="14" width="7" height="7" rx="2" />
+                <rect x="14" y="14" width="7" height="7" rx="2" />
+            </symbol>
+            <symbol id="ic-revenue" viewBox="0 0 24 24">
+                <ellipse cx="12" cy="6" rx="8" ry="3" />
+                <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6" />
+                <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+            </symbol>
+            <symbol id="ic-players" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="3.4" />
+                <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+                <path d="M16 5.3a3.4 3.4 0 0 1 0 6.5M17.5 14.4a6.5 6.5 0 0 1 4 5.6" />
+            </symbol>
+            <symbol id="ic-matches" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+            </symbol>
+            <symbol id="ic-time" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5.2l3.4 2" />
+            </symbol>
+            <symbol id="ic-live" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="2.6" />
+                <path d="M7.7 7.7a6 6 0 0 0 0 8.6M16.3 16.3a6 6 0 0 0 0-8.6" />
+                <path d="M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 19.4a10.5 10.5 0 0 0 0-14.8" />
+            </symbol>
+            <symbol id="ic-menu" viewBox="0 0 24 24">
+                <path d="M4 7h16M4 12h16M4 17h16" />
+            </symbol>
+            <symbol id="ic-refresh" viewBox="0 0 24 24">
+                <path d="M20 12a8 8 0 1 1-2.6-5.9" />
+                <path d="M20 4v4.5h-4.5" />
+            </symbol>
+        </defs>
+    </svg>
 
-    <div class="wrap">
-        <div id="gate" class="gate" hidden></div>
-        <main id="panel" hidden></main>
+    <div class="app">
+        <aside class="side" id="side">
+            <div class="brand">SolRush <span>· admin</span></div>
+            <nav id="nav"></nav>
+            <div class="side-foot">
+                <a class="quiet" href="/">← retour au jeu</a>
+            </div>
+        </aside>
+        <div class="scrim" id="scrim"></div>
+
+        <main class="main">
+            <header class="top">
+                <button class="burger" id="burger" aria-label="Menu"><svg class="i">
+                        <use href="#ic-menu" /></svg></button>
+                <h1 id="title">Vue d’ensemble</h1>
+                <span class="when" id="when"></span>
+                <div class="tools" id="tools"></div>
+            </header>
+            <div class="view" id="view"></div>
+        </main>
     </div>
 
     <script type="module">
@@ -698,38 +988,38 @@
            is right there — no second login to build, no second password to
            leak. The server checks the ACCOUNT behind that token against
            ADMIN_EMAILS on every request; nothing here is trusted. */
-        const KEY = 'wr_session';
         const session = (() => {
-            try { return JSON.parse(localStorage.getItem(KEY) || 'null'); }
+            try { return JSON.parse(localStorage.getItem('wr_session') || 'null'); }
             catch { return null; }
         })();
 
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s ?? '').replace(/[&<>"]/g,
             (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const icon = (n) => `<svg class="i"><use href="#ic-${n}"/></svg>`;
 
-        const post = (path, body) => fetch(path, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: 'Bearer ' + (session?.access_token || ''),
-            },
-            body: JSON.stringify(body || {}),
-        });
-
-        function gate(msg) {
-            $('panel').hidden = true;
-            $('live').hidden = true;
-            $('gate').hidden = false;
-            $('gate').innerHTML = `<div class="card"><p>${esc(msg)}</p>
-                <p><a href="/">Ouvrir SolRush et se connecter</a></p></div>`;
+        async function api(path, body) {
+            const r = await fetch(path, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + (session?.access_token || ''),
+                },
+                body: JSON.stringify(body || {}),
+            });
+            if (r.status === 403) throw new HttpError(403);
+            if (r.status === 401) throw new HttpError(401);
+            if (!r.ok) throw new HttpError(r.status);
+            return r.json();
+        }
+        class HttpError extends Error {
+            constructor(status) { super('http ' + status); this.status = status; }
         }
 
-        /* ---------- formatting ---------- */
+        /* ================= formatting ================= */
         const n0 = (n) => Number(n || 0).toLocaleString('fr-FR');
-
-        // FCFA has no subunit and the amounts are small; a bare grouped number
-        // with the currency after it reads faster than any currency formatter.
+        // FCFA has no subunit and the amounts are small; a grouped number with
+        // the currency after it reads faster than any currency formatter.
         const money = (n) => n0(Math.round(n || 0)) + ' F';
 
         /* Durations in the units a person would say them in. "247 s" is a
@@ -746,10 +1036,157 @@
         }
 
         const when = (iso) => iso
-            ? new Date(iso).toLocaleString('fr', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+            ? new Date(iso).toLocaleString('fr', {
+                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+            })
             : '—';
+        const dayLabel = (iso, opts) =>
+            new Date(iso).toLocaleDateString('fr', opts || { day: 'numeric', month: 'short' });
+        const pct = (a, b) => b > 0 ? (100 * a / b).toFixed(a / b < .1 ? 1 : 0) + ' %' : '—';
 
-        const pct = (a, b) => b > 0 ? (100 * a / b).toFixed(a / b < 0.1 ? 1 : 0) + ' %' : '—';
+        /* Change against the same length of time immediately before.
+
+           From nothing to something is not "+∞ %", and printing that is how a
+           dashboard starts lying: it says "nouveau" instead. */
+        function chip(now, was) {
+            const a = Number(now) || 0, b = Number(was) || 0;
+            if (!b) return a ? '<span class="chip up">nouveau</span>' : '';
+            const p = Math.round(100 * (a - b) / b);
+            if (p === 0) return '<span class="chip flat">stable</span>';
+            return `<span class="chip ${p > 0 ? 'up' : 'down'}">${p > 0 ? '+' : ''}${p} %</span>`;
+        }
+
+        /* ================= the range ================= */
+        /* Boundaries are the VIEWER's local midnights, and they are computed
+           here rather than on the server for exactly that reason: "7 days" has
+           to mean seven of their days, not seven UTC days ending at one in the
+           morning. The server buckets from whatever start it is given, so the
+           chart's columns come out in the same days too. */
+        const PRESETS = [['7', '7 j'], ['30', '30 j'], ['90', '90 j'], ['365', '12 mois'], ['all', 'Tout']];
+
+        const state = {
+            view: 'overview',
+            preset: localStorage.getItem('adm_preset') || '30',
+            from: localStorage.getItem('adm_from') || '',
+            to: localStorage.getItem('adm_to') || '',
+        };
+
+        const isoDay = (d) => {
+            const c = new Date(d);
+            return `${c.getFullYear()}-${String(c.getMonth() + 1).padStart(2, '0')}-${String(c.getDate()).padStart(2, '0')}`;
+        };
+
+        function bounds() {
+            // Exclusive end: tomorrow's local midnight, so today counts in full.
+            const end = new Date(); end.setHours(0, 0, 0, 0); end.setDate(end.getDate() + 1);
+            if (state.preset === 'custom' && state.from && state.to) {
+                const f = new Date(state.from + 'T00:00:00');
+                const t = new Date(state.to + 'T00:00:00'); t.setDate(t.getDate() + 1);
+                return { from: f.toISOString(), to: t.toISOString() };
+            }
+            const days = state.preset === 'all' ? 1095 : Number(state.preset) || 30;
+            const start = new Date(end); start.setDate(start.getDate() - days);
+            return { from: start.toISOString(), to: end.toISOString() };
+        }
+
+        function rangeLabel() {
+            const b = bounds();
+            const last = new Date(Date.parse(b.to) - 1);
+            if (state.preset === 'all') return 'depuis le début';
+            /* The year is shown as soon as the range crosses one. Without it,
+               "12 mois" read "22 août → 21 août" — which is not a range, it is
+               a puzzle, and it looks exactly like a bug in the date maths. */
+            const opts = new Date(b.from).getFullYear() === last.getFullYear()
+                ? { day: 'numeric', month: 'short' }
+                : { day: 'numeric', month: 'short', year: 'numeric' };
+            return dayLabel(b.from, opts) + ' → ' + dayLabel(last, opts);
+        }
+
+        function rangeControl() {
+            const custom = state.preset === 'custom';
+            const b = bounds();
+            const start = custom && state.from ? state.from : isoDay(b.from);
+            const stop = custom && state.to ? state.to : isoDay(new Date(Date.parse(b.to) - 1));
+            return `
+              <div class="seg" id="preset">
+                ${PRESETS.map(([k, l]) => `<button data-preset="${k}"
+                    aria-pressed="${state.preset === k}">${l}</button>`).join('')}
+                <button data-preset="custom" aria-pressed="${custom}">Période…</button>
+              </div>
+              ${custom ? `<div class="row" id="custom">
+                 <input type="date" id="d-from" value="${esc(start)}" max="${esc(isoDay(new Date()))}">
+                 <span class="sub">→</span>
+                 <input type="date" id="d-to" value="${esc(stop)}" max="${esc(isoDay(new Date()))}">
+                 <button class="solid" id="d-go">Appliquer</button>
+               </div>` : ''}`;
+        }
+
+        /* ================= chart ================= */
+        let metric = 'games';
+        const METRICS = {
+            games: ['Parties', (v) => n0(v)],
+            revenue: ['Revenus', (v) => money(v)],
+            signups: ['Inscriptions', (v) => n0(v)],
+        };
+
+        function chart(series, step, only, range) {
+            const keys = only ? [only] : Object.keys(METRICS);
+            const key = only || metric;
+            const [label, fmt] = METRICS[key];
+            const vals = series.map((r) => Number(r[key]) || 0);
+            // Scaled to the tallest bar rather than to a round number: with one
+            // or two games a day, a fixed scale is a row of invisible bars.
+            const top = Math.max(...vals, 1);
+            const total = vals.reduce((a, b) => a + b, 0);
+            const last = series.length - 1;
+            const weekly = step > 1;
+
+            const bars = series.map((r, i) => {
+                const v = Number(r[key]) || 0;
+                const d = new Date(r.day + 'T12:00:00');
+                const title = (weekly ? 'semaine du ' : '')
+                    + d.toLocaleDateString('fr', { weekday: weekly ? undefined : 'long', day: 'numeric', month: 'long' })
+                    + ' — ' + fmt(v);
+                return `<div class="col ${v ? '' : 'zero'} ${i === last ? 'last' : ''}" title="${esc(title)}">
+                          <i style="height:${v ? Math.max(3, Math.round(100 * v / top)) : 2}%"></i>
+                        </div>`;
+            }).join('');
+
+            // A label under every column is unreadable; roughly six across the
+            // width gives the eye an anchor without crowding.
+            const every = Math.max(1, Math.round(series.length / 6));
+            const axis = series.map((r, i) => {
+                const show = i === last || (last - i) % every === 0;
+                return `<span>${show ? esc(dayLabel(r.day + 'T12:00:00')) : ''}</span>`;
+            }).join('');
+
+            return `
+              <div class="sec-head">
+                <h2>${weekly ? 'par semaine' : 'par jour'}</h2>
+                ${only ? '' : `<div class="seg" id="seg">
+                  ${keys.map((k) => `<button data-metric="${k}"
+                      aria-pressed="${k === key}">${METRICS[k][0]}</button>`).join('')}
+                </div>`}
+                <span class="note">${esc(label.toLowerCase())} · ${esc(fmt(total))} sur la période</span>
+              </div>
+              <div class="card" id="chart-card"
+                   data-from="${esc(range?.from || '')}" data-to="${esc(range?.to || '')}"
+                   data-step="${esc(String(step))}">
+                <div class="y-top">max ${esc(fmt(top))}</div>
+                <div class="chart">${bars}</div>
+                <div class="x-axis">${axis}</div>
+              </div>`;
+        }
+
+        /* ================= views ================= */
+        const VIEWS = {
+            overview: { title: 'Vue d’ensemble', icon: 'overview', ranged: true },
+            revenue: { title: 'Revenus', icon: 'revenue', ranged: true },
+            players: { title: 'Joueurs', icon: 'players', ranged: false },
+            matches: { title: 'Parties', icon: 'matches', ranged: true },
+            time: { title: 'Temps passé', icon: 'time', ranged: true },
+            live: { title: 'En direct', icon: 'live', ranged: false },
+        };
 
         const CART = {
             completed: ['ok', 'payé'],
@@ -758,144 +1195,255 @@
             abandoned: ['no', 'abandonné'],
         };
 
-        /* ---------- the fourteen-day chart ---------- */
-        // Which series is on screen. Kept outside render() so a refresh does
-        // not throw the choice away every fifteen seconds.
-        let metric = 'games';
-        const METRICS = {
-            games: ['Parties', (v) => n0(v)],
-            revenue: ['Revenus', (v) => money(v)],
-            signups: ['Inscriptions', (v) => n0(v)],
-        };
-
-        function chart(series) {
-            const label = METRICS[metric][0], fmt = METRICS[metric][1];
-            const vals = series.map((r) => Number(r[metric]) || 0);
-            // Scaled to the tallest bar rather than to a round number: with one
-            // or two games a day, a fixed scale is fourteen invisible bars.
-            const top = Math.max(...vals, 1);
-            const total = vals.reduce((a, b) => a + b, 0);
-            const last = series.length - 1;
-
-            const bars = series.map((r, i) => {
-                const v = Number(r[metric]) || 0;
-                const d = new Date(r.day + 'T12:00:00');
-                const title = d.toLocaleDateString('fr', { weekday: 'long', day: 'numeric', month: 'long' })
-                    + ' — ' + fmt(v);
-                return `<div class="col ${v ? '' : 'zero'} ${i === last ? 'today' : ''}" title="${esc(title)}">
-                          <i style="height:${v ? Math.max(4, Math.round(100 * v / top)) : 3}%"></i>
-                        </div>`;
-            }).join('');
-
-            // A label under every column is unreadable on a phone; every third
-            // gives the eye something to anchor on without crowding.
-            const axis = series.map((r, i) => {
-                const d = new Date(r.day + 'T12:00:00');
-                const show = i === last || (last - i) % 3 === 0;
-                return `<span>${show ? esc(d.toLocaleDateString('fr', { day: 'numeric', month: 'short' })) : ''}</span>`;
-            }).join('');
-
-            return `
-              <div class="sec-head">
-                <h2>14 derniers jours</h2>
-                <div class="seg" id="seg">
-                  ${Object.keys(METRICS).map((k) => `<button data-metric="${k}"
-                      aria-pressed="${k === metric}">${METRICS[k][0]}</button>`).join('')}
-                </div>
-                <span class="note">${esc(label.toLowerCase())} · ${esc(fmt(total))} au total</span>
-              </div>
-              <div class="card">
-                <div class="chart">${bars}</div>
-                <div class="x-axis">${axis}</div>
-              </div>`;
+        // One overview answer serves three views; refetching it for each tab
+        // would be three identical round trips to Neon per click.
+        let cache = { key: '', data: null };
+        async function overview(fresh) {
+            const b = bounds();
+            const key = b.from + b.to;
+            if (!fresh && cache.key === key && cache.data) return cache.data;
+            const data = await api('/api/admin/overview', b);
+            cache = { key, data };
+            return data;
         }
 
-        /* ---------- the page ---------- */
-        function render(d) {
-            const s = d.stats, m = d.money, t = d.time, ses = d.session;
-            /* Carried across the fifteen-second refresh. Without it, typing an
-               email into the search box is a race against a timer: the redraw
-               replaces the input mid-word and the letters go nowhere. */
-            const typed = $('q')?.value || '';
-            const wasFocused = document.activeElement?.id === 'q';
-            const results = $('found')?.innerHTML || '';
-            const live = d.online.filter((p) => !p.away).length;
-
+        function heroCard(d) {
+            const m = d.money, w = d.was.money;
             /* Part of this total is a guess — sales made before amounts were
-               recorded are valued at the catalogue price — and the page says
-               so rather than presenting an estimate as a figure. The "≈" in
-               front of the headline is there for the same reason. */
-            const guessed = m.unpriced;
-            const missing = guessed
-                ? ` · dont ${guessed} vente${guessed > 1 ? 's' : ''} estimée${guessed > 1 ? 's' : ''}
-                    au prix catalogue (${money(d.price)}), faute de montant enregistré à l’époque`
+               recorded are valued at the catalogue price — and the page says so
+               rather than presenting an estimate as a figure. */
+            const note = m.unpriced
+                ? ` · dont ${m.unpriced} vente${m.unpriced > 1 ? 's' : ''} estimée${m.unpriced > 1 ? 's' : ''}
+                    au prix catalogue (${money(d.price)})`
                 : '';
-
-            const hero = `
-              <div class="card hero">
+            return `<div class="card hero">
                 <div class="hero-main">
-                  <div class="cap">Revenus SolRush Plus</div>
-                  <div class="amount">${guessed ? '≈ ' : ''}${money(m.all_time)}<i>depuis le début</i></div>
-                  <p class="sub" style="margin:10px 0 0">
-                    ${m.paid} vente${m.paid > 1 ? 's' : ''} · ${pct(m.paid, s.attempts)} des tentatives
-                    aboutissent · ${pct(s.plus, s.accounts)} des comptes ont Plus${missing}
+                  <div class="cap">Revenus · ${esc(rangeLabel())}</div>
+                  <div class="big">${m.unpriced ? '≈ ' : ''}${money(m.revenue)}
+                      ${chip(m.revenue, w.revenue)}</div>
+                  <p class="sub" style="margin:9px 0 0">
+                    ${m.paid} vente${m.paid > 1 ? 's' : ''} sur ${m.attempts} tentative${m.attempts > 1 ? 's' : ''}
+                    (${pct(m.paid, m.attempts)})${note}
                     ${d.payments ? '' : ' · paiements non configurés sur ce serveur'}
                   </p>
                 </div>
                 <div class="hero-side">
-                  <div><b>${money(m.d30)}</b><small>30 derniers jours</small></div>
-                  <div><b>${money(m.d7)}</b><small>7 derniers jours</small></div>
+                  <div><b>${money(m.revenue_all)}</b><small>depuis le début</small></div>
+                  <div><b>${n0(m.paid_all)}</b><small>vente${m.paid_all > 1 ? 's' : ''} au total</small></div>
                 </div>
               </div>`;
+        }
 
-            const tiles = `
-              <div class="tiles by4">
-                <div class="tile"><b>${live}</b><span>en ligne</span></div>
-                <div class="tile"><b>${n0(s.players_7d)}</b><span>joueurs actifs</span><em>7 jours</em></div>
-                <div class="tile"><b>${n0(s.accounts)}</b><span>comptes</span><em>+${n0(s.new_7d)} cette semaine</em></div>
-                <div class="tile"><b>${n0(s.plus)}</b><span>comptes Plus</span></div>
-                <div class="tile"><b>${n0(s.games_1d)}</b><span>parties 24 h</span><em>${n0(s.games_7d)} sur 7 j</em></div>
-                <div class="tile"><b>${n0(s.games_all)}</b><span>parties au total</span></div>
-                <div class="tile ${s.pending ? 'alert' : ''}"><b>${n0(s.pending)}</b><span>paiements en attente</span></div>
-                <div class="tile"><b>${n0(s.attempts)}</b><span>tentatives d’achat</span></div>
-              </div>`;
+        const RENDER = {
+            async overview(fresh) {
+                const d = await overview(fresh);
+                const a = d.activity, w = d.was.activity, t = d.time, s = d.session;
+                return `
+                  <section>${heroCard(d)}</section>
+                  <section>
+                    <div class="sec-head"><h2>Sur la période</h2>
+                      <span class="note">${esc(rangeLabel())}</span></div>
+                    <div class="tiles by4">
+                      <div class="tile"><b>${n0(a.games)}</b><span class="lab">parties jouées</span>
+                          ${chip(a.games, w.games)}</div>
+                      <div class="tile"><b>${n0(a.players)}</b><span class="lab">joueurs actifs</span>
+                          ${chip(a.players, w.players)}</div>
+                      <div class="tile"><b>${n0(a.new_users)}</b><span class="lab">nouveaux comptes</span>
+                          ${chip(a.new_users, w.new_users)}</div>
+                      <div class="tile"><b>${dur(t.med_game)}</b><span class="lab">durée d’une partie</span>
+                          <em>médiane</em></div>
+                      <div class="tile"><b>${n0(a.accounts)}</b><span class="lab">comptes au total</span></div>
+                      <div class="tile"><b>${n0(a.plus)}</b><span class="lab">comptes Plus</span>
+                          <em>${pct(a.plus, a.accounts)} des comptes</em></div>
+                      <div class="tile"><b>${n0(a.games_all)}</b><span class="lab">parties au total</span></div>
+                      <div class="tile ${d.money.pending ? 'alert' : ''}"><b>${n0(d.money.pending)}</b>
+                          <span class="lab">paiements en attente</span>
+                          ${d.money.pending ? '<em>à vérifier dans Revenus</em>' : ''}</div>
+                    </div>
+                  </section>
+                  <section id="chart-sec">${chart(d.series, d.range.step, null, d.range)}</section>
+                  <section>
+                    <div class="sec-head"><h2>Temps</h2>
+                      <span class="note">détail dans « Temps passé »</span></div>
+                    <div class="tiles by3">
+                      <div class="tile"><b>${dur(t.avg_game)}</b><span class="lab">durée moyenne</span></div>
+                      <div class="tile"><b>${dur(s.avg_day)}</b><span class="lab">temps par joueur</span>
+                          <em>et par jour</em></div>
+                      <div class="tile"><b>${dur(t.played)}</b><span class="lab">temps joué</span>
+                          <em>sur la période</em></div>
+                    </div>
+                  </section>`;
+            },
 
-            /* Two different questions, kept apart because they get confused:
-               how long a GAME lasts, and how long a PERSON stays. Most of the
-               time spent here is not spent playing. */
-            const engagement = `
-              <div class="tiles by3">
-                <div class="tile"><b>${dur(t.med_game)}</b><span>durée d’une partie</span><em>médiane</em></div>
-                <div class="tile"><b>${dur(t.avg_game)}</b><span>durée d’une partie</span><em>moyenne</em></div>
-                <div class="tile"><b>${dur(ses.avg_day)}</b><span>temps par joueur</span><em>et par jour</em></div>
-                <div class="tile"><b>${dur(t.played_7d)}</b><span>temps joué</span><em>7 jours</em></div>
-                <div class="tile"><b>${dur(t.played_all)}</b><span>temps joué</span><em>depuis le début</em></div>
-                <div class="tile"><b>${s.players_7d ? (s.games_7d / s.players_7d).toFixed(1) : '—'}</b>
-                    <span>parties par joueur</span><em>7 jours</em></div>
-              </div>
-              <p class="sub" style="margin:10px 2px 0">
-                Durée d’une partie mesurée du début à la fin ; au-delà de deux heures,
-                c’est un onglet oublié et la partie est écartée du calcul.
-                Le temps par joueur vient du navigateur, qui ne compte que les secondes
-                où la page est réellement à l’écran —
-                ${ses.device_days ? `${n0(ses.device_days)} journée${ses.device_days > 1 ? 's' : ''}-joueur
-                   mesurée${ses.device_days > 1 ? 's' : ''} sur 30 jours`
-                    : 'aucune mesure pour l’instant : la mesure démarre au prochain déploiement'}.
-              </p>`;
+            async revenue(fresh) {
+                const d = await overview(fresh);
+                const m = d.money;
+                payState.status = payState.status || '';
+                const pay = await api('/api/admin/payments',
+                    { ...bounds(), status: payState.status || undefined, limit: payState.limit, offset: 0 });
+                payState.rows = pay.rows;
+                payState.total = pay.total;
+                return `
+                  <section>${heroCard(d)}</section>
+                  <section>
+                    <div class="sec-head"><h2>Entonnoir</h2></div>
+                    <div class="tiles by4">
+                      <div class="tile"><b>${n0(m.attempts)}</b><span class="lab">tentatives d’achat</span>
+                          ${chip(m.attempts, d.was.money.attempts)}</div>
+                      <div class="tile"><b>${n0(m.paid)}</b><span class="lab">ventes abouties</span>
+                          <em>${pct(m.paid, m.attempts)} des tentatives</em></div>
+                      <div class="tile ${m.pending ? 'alert' : ''}"><b>${n0(m.pending)}</b>
+                          <span class="lab">en attente</span><em>tous temps confondus</em></div>
+                      <div class="tile"><b>${m.paid ? money(Math.round(m.revenue / m.paid)) : '—'}</b>
+                          <span class="lab">panier moyen</span></div>
+                    </div>
+                  </section>
+                  <section id="chart-sec">${chart(d.series, d.range.step, 'revenue', d.range)}</section>
+                  <section>
+                    <div class="sec-head"><h2>Paiements</h2>
+                      <div class="seg" id="pay-filter">
+                        ${[['', 'Tous'], ['completed', 'Payés'], ['waiting_payment', 'En attente'],
+                        ['payment_failed', 'Échoués'], ['abandoned', 'Abandonnés']]
+                        .map(([k, l]) => `<button data-status="${k}"
+                            aria-pressed="${payState.status === k}">${l}</button>`).join('')}
+                      </div>
+                      <span class="note">${n0(pay.total)} sur la période</span></div>
+                    <div class="card" id="pay-box">${paymentsTable()}</div>
+                  </section>`;
+            },
 
-            const onlineRows = d.online.map((p) => `
-              <tr>
-                <td data-label="Joueur"><span class="dot ${p.away ? 'away' : ''}"></span>
-                    <span class="who">${esc(p.nick)}</span>
-                    ${p.plus ? ' <span class="pill plus">Plus</span>' : ''}</td>
-                <td data-label="Compte">${p.account ? 'inscrit' : '<span class="sub">invité</span>'}</td>
-                <td data-label="Points">${n0(p.points)}</td>
-                <td data-label="État">${p.away ? '<span class="sub">déconnecté</span>'
-                    : p.playing ? `en partie <span class="sub">${esc(p.room || '')}</span>`
-                        : p.room ? `salon <span class="sub">${esc(p.room)}</span>` : 'dans les menus'}</td>
-              </tr>`).join('');
+            async players() {
+                const out = await api('/api/admin/players',
+                    { q: playerState.q, sort: playerState.sort, limit: 50 });
+                playerState.rows = out.rows;
+                return `
+                  <section>
+                    <div class="sec-head"><h2>Chercher</h2></div>
+                    <div class="card">
+                      <div class="row">
+                        <input class="grow" id="q" placeholder="email ou pseudo"
+                               autocomplete="off" value="${esc(playerState.q)}">
+                        <button class="solid" id="go">Chercher</button>
+                      </div>
+                      <div class="row" style="margin-top:10px">
+                        <div class="seg" id="sortby">
+                          ${[['recent', 'Vus récemment'], ['points', 'Meilleurs'],
+                        ['new', 'Nouveaux'], ['plus', 'Plus d’abord']]
+                        .map(([k, l]) => `<button data-sort="${k}"
+                              aria-pressed="${playerState.sort === k}">${l}</button>`).join('')}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  <section>
+                    <div class="sec-head"><h2>${out.searched ? 'Résultats' : 'Comptes'}</h2>
+                      <span class="note">${n0(out.rows.length)} affiché${out.rows.length > 1 ? 's' : ''}</span></div>
+                    <div class="card" id="players-box">${playersTable()}</div>
+                  </section>`;
+            },
 
-            const cartRows = d.carts.map((c) => {
+            async matches() {
+                const out = await api('/api/admin/matches', { ...bounds(), limit: matchState.limit, offset: 0 });
+                matchState.rows = out.rows;
+                matchState.total = out.total;
+                return `
+                  <section>
+                    <div class="sec-head"><h2>Parties terminées</h2>
+                      <span class="note">${n0(out.total)} sur la période</span></div>
+                    <div class="card" id="match-box">${matchesTable()}</div>
+                  </section>`;
+            },
+
+            async time(fresh) {
+                const d = await overview(fresh);
+                const t = d.time, s = d.session, a = d.activity;
+                return `
+                  <section>
+                    <div class="sec-head"><h2>Une partie</h2>
+                      <span class="note">${n0(t.counted)} partie${t.counted > 1 ? 's' : ''} mesurée${t.counted > 1 ? 's' : ''}</span></div>
+                    <div class="tiles by3">
+                      <div class="tile"><b>${dur(t.med_game)}</b><span class="lab">durée médiane</span></div>
+                      <div class="tile"><b>${dur(t.avg_game)}</b><span class="lab">durée moyenne</span></div>
+                      <div class="tile"><b>${a.players ? (a.games / a.players).toFixed(1) : '—'}</b>
+                          <span class="lab">parties par joueur</span></div>
+                    </div>
+                    <p class="sub" style="margin:10px 2px 0">
+                      La médiane est là à côté de la moyenne parce qu’un seul onglet oublié
+                      déplace une moyenne où il veut. Au-delà de deux heures, la partie est
+                      écartée du calcul : c’est un onglet, pas une partie.
+                    </p>
+                  </section>
+                  <section>
+                    <div class="sec-head"><h2>Un joueur</h2></div>
+                    <div class="tiles by3">
+                      <div class="tile"><b>${dur(s.avg_day)}</b><span class="lab">temps sur le jeu</span>
+                          <em>par joueur et par jour</em></div>
+                      <div class="tile"><b>${dur(s.total)}</b><span class="lab">temps cumulé</span>
+                          <em>sur la période</em></div>
+                      <div class="tile"><b>${n0(s.devices)}</b><span class="lab">appareils mesurés</span>
+                          <em>${n0(s.device_days)} journée${s.device_days > 1 ? 's' : ''}-joueur</em></div>
+                    </div>
+                    <p class="sub" style="margin:10px 2px 0">
+                      ${s.device_days
+                        ? `Le navigateur ne compte que les secondes où la page est réellement à
+                           l’écran : un onglet ouvert tout l’après-midi en arrière-plan ne compte pas
+                           comme un après-midi de jeu.`
+                        : `Aucune mesure sur cette période. La mesure ne démarre qu’à partir du
+                           déploiement qui l’a introduite — une période antérieure sera toujours vide.`}
+                    </p>
+                  </section>
+                  <section>
+                    <div class="sec-head"><h2>Temps joué</h2></div>
+                    <div class="tiles by3">
+                      <div class="tile"><b>${dur(t.played)}</b><span class="lab">sur la période</span></div>
+                      <div class="tile"><b>${n0(a.games)}</b><span class="lab">parties</span></div>
+                      <div class="tile"><b>${n0(a.players)}</b><span class="lab">joueurs actifs</span></div>
+                    </div>
+                  </section>`;
+            },
+
+            async live() {
+                const d = await api('/api/admin/live');
+                const rows = d.online.map((p) => `
+                  <tr>
+                    <td data-label="Joueur"><span class="dot ${p.away ? 'away' : 'beat'}"></span>
+                        <span class="who">${esc(p.nick)}</span>
+                        ${p.plus ? ' <span class="pill plus">Plus</span>' : ''}</td>
+                    <td data-label="Compte">${p.account ? 'inscrit' : '<span class="sub">invité</span>'}</td>
+                    <td data-label="Points">${n0(p.points)}</td>
+                    <td data-label="État">${p.away ? '<span class="sub">déconnecté</span>'
+                        : p.playing ? `en partie <span class="sub">${esc(p.room || '')}</span>`
+                            : p.room ? `salon <span class="sub">${esc(p.room)}</span>` : 'dans les menus'}</td>
+                  </tr>`).join('');
+                return `
+                  <section>
+                    <div class="tiles by3">
+                      <div class="tile"><b>${n0(d.live)}</b><span class="lab">joueurs actifs</span></div>
+                      <div class="tile"><b>${n0(d.online.length - d.live)}</b>
+                          <span class="lab">en reconnexion</span></div>
+                      <div class="tile"><b>${n0(d.rooms)}</b><span class="lab">salons ouverts</span></div>
+                    </div>
+                  </section>
+                  <section>
+                    <div class="sec-head"><h2>Connectés maintenant</h2>
+                      <span class="note">rafraîchi toutes les 10 s</span></div>
+                    <div class="card">
+                      ${rows ? `<table><thead><tr><th>Joueur</th><th>Compte</th><th>Points</th><th>État</th></tr></thead>
+                        <tbody>${rows}</tbody></table>`
+                        : '<p class="empty">Personne de connecté.</p>'}
+                    </div>
+                  </section>`;
+            },
+        };
+
+        /* ================= tables that reload in place ================= */
+        const payState = { status: '', limit: 50, rows: [], total: 0 };
+        const matchState = { limit: 50, rows: [], total: 0 };
+        const playerState = { q: '', sort: 'recent', rows: [] };
+
+        function paymentsTable() {
+            if (!payState.rows.length) return '<p class="empty">Aucune tentative d’achat sur cette période.</p>';
+            const rows = payState.rows.map((c) => {
                 const [cls, label] = CART[c.status] || ['wait', c.status];
                 return `<tr>
                   <td data-label="Joueur"><span class="who">${esc(c.nick)}</span>
@@ -908,173 +1456,289 @@
                         ? `<button data-cart="${esc(c.cart_id)}">Vérifier</button>` : ''}</td>
                 </tr>`;
             }).join('');
-
-            const matchRows = d.matches.map((m2) => {
-                const secs = m2.started_at && m2.ended_at
-                    ? (new Date(m2.ended_at) - new Date(m2.started_at)) / 1000 : 0;
-                return `<tr>
-                  <td data-label="Partie"><span class="who">${esc(m2.p0_nick)}</span>
-                      <span class="sub">contre</span> ${esc(m2.p1_nick)}
-                      <div class="sub">${esc(m2.mode)} · ${m2.moves} coups · ${esc(m2.reason || '')}</div></td>
-                  <td data-label="Durée">${secs > 0 && secs < 7200 ? dur(secs) : '—'}</td>
-                  <td data-label="Fin">${when(m2.ended_at)}</td>
-                  <td>${m2.token ? `<a href="/r/${esc(m2.token)}">revoir ↗</a>` : ''}</td>
-                </tr>`;
-            }).join('');
-
-            $('panel').innerHTML = `
-              <section>
-                <div class="sec-head"><h2>Argent</h2></div>
-                ${hero}
-              </section>
-
-              <section>
-                <div class="sec-head"><h2>Activité</h2></div>
-                ${tiles}
-              </section>
-
-              <section id="chart-sec">${chart(d.series)}</section>
-
-              <section>
-                <div class="sec-head"><h2>Temps passé</h2></div>
-                ${engagement}
-              </section>
-
-              <section>
-                <div class="sec-head"><h2>En ligne maintenant</h2>
-                  <span class="note">${live} actif${live > 1 ? 's' : ''}${d.online.length > live
-                    ? ` · ${d.online.length - live} en reconnexion` : ''}</span></div>
-                <div class="card">
-                  ${onlineRows ? `<table><thead><tr><th>Joueur</th><th>Compte</th><th>Points</th><th>État</th></tr></thead>
-                    <tbody>${onlineRows}</tbody></table>`
-                    : '<p class="empty">Personne de connecté.</p>'}
-                </div>
-              </section>
-
-              <section>
-                <div class="sec-head"><h2>Chercher un joueur</h2></div>
-                <div class="card">
-                  <div class="row"><input id="q" placeholder="email ou pseudo" autocomplete="off">
-                    <button class="solid" id="go">Chercher</button></div>
-                  <div id="found"></div>
-                </div>
-              </section>
-
-              <section>
-                <div class="sec-head"><h2>Paiements</h2>
-                  <span class="note">${m.paid} payé${m.paid > 1 ? 's' : ''} · ${s.pending} en attente</span></div>
-                <div class="card">
-                  ${cartRows ? `<table><thead><tr><th>Joueur</th><th>Montant</th><th>État</th><th>Créé</th><th></th></tr></thead>
-                    <tbody>${cartRows}</tbody></table>`
-                    : '<p class="empty">Aucune tentative d’achat pour l’instant.</p>'}
-                </div>
-              </section>
-
-              <section>
-                <div class="sec-head"><h2>Dernières parties</h2></div>
-                <div class="card">
-                  ${matchRows ? `<table><thead><tr><th>Partie</th><th>Durée</th><th>Fin</th><th></th></tr></thead>
-                    <tbody>${matchRows}</tbody></table>`
-                    : '<p class="empty">Aucune partie terminée.</p>'}
-                </div>
-              </section>`;
-
-            $('live').hidden = false;
-            $('refreshed').textContent = new Date().toLocaleTimeString('fr');
-            $('q').value = typed;
-            $('found').innerHTML = results;
-            if (wasFocused) $('q').focus();
-            $('go').addEventListener('click', search);
-            $('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
-            for (const b of $('found').querySelectorAll('[data-user]')) {
-                b.addEventListener('click', () => togglePlus(b));
-            }
-            for (const b of $('panel').querySelectorAll('[data-cart]')) {
-                b.addEventListener('click', () => recheck(b));
-            }
-            wireSeg(d);
+            return `<table><thead><tr><th>Joueur</th><th>Montant</th><th>État</th><th>Créé</th><th></th></tr></thead>
+                <tbody>${rows}</tbody></table>
+                ${payState.rows.length < payState.total
+                    ? `<div class="more"><button id="pay-more">Voir ${
+                        Math.min(50, payState.total - payState.rows.length)} de plus</button></div>` : ''}`;
         }
 
-        /* The chart redraws its own markup — including these buttons — so they
-           are wired again after every redraw. Only the chart is replaced and
-           not the page: re-rendering everything would wipe whatever is half
-           typed in the search box, which the fifteen-second refresh made a real
-           annoyance the first time it happened. */
-        function wireSeg(d) {
-            for (const b of $('seg').querySelectorAll('[data-metric]')) {
-                b.onclick = () => {
-                    metric = b.dataset.metric;
-                    $('chart-sec').innerHTML = chart(d.series);
-                    wireSeg(d);
+        function matchesTable() {
+            if (!matchState.rows.length) return '<p class="empty">Aucune partie terminée sur cette période.</p>';
+            const rows = matchState.rows.map((m) => {
+                const secs = m.started_at && m.ended_at
+                    ? (new Date(m.ended_at) - new Date(m.started_at)) / 1000 : 0;
+                return `<tr>
+                  <td data-label="Partie"><span class="who">${esc(m.p0_nick)}</span>
+                      <span class="sub">contre</span> ${esc(m.p1_nick)}
+                      <div class="sub">${esc(m.mode)} · ${m.moves} coups · ${esc(m.reason || '')}</div></td>
+                  <td data-label="Durée">${secs > 0 && secs < 7200 ? dur(secs) : '—'}</td>
+                  <td data-label="Fin">${when(m.ended_at)}</td>
+                  <td>${m.token ? `<a href="/r/${esc(m.token)}">revoir ↗</a>` : ''}</td>
+                </tr>`;
+            }).join('');
+            return `<table><thead><tr><th>Partie</th><th>Durée</th><th>Fin</th><th></th></tr></thead>
+                <tbody>${rows}</tbody></table>
+                ${matchState.rows.length < matchState.total
+                    ? `<div class="more"><button id="match-more">Voir ${
+                        Math.min(50, matchState.total - matchState.rows.length)} de plus</button></div>` : ''}`;
+        }
+
+        function playersTable() {
+            if (!playerState.rows.length) return '<p class="empty">Personne trouvé.</p>';
+            const rows = playerState.rows.map((u) => `
+              <tr>
+                <td data-label="Joueur"><span class="who">${esc(u.nick)}</span>
+                    ${u.plus ? ' <span class="pill plus">Plus</span>' : ''}
+                    <div class="sub">${esc(u.email)}</div></td>
+                <td data-label="Points">${n0(u.points)}<div class="sub">${u.wins} V / ${u.losses} D</div></td>
+                <td data-label="Inscrit">${when(u.created_at)}</td>
+                <td data-label="Vu">${when(u.last_seen)}</td>
+                <td><button data-user="${esc(u.id)}" data-on="${u.plus ? '0' : '1'}">
+                    ${u.plus ? 'Retirer Plus' : 'Donner Plus'}</button></td>
+              </tr>`).join('');
+            return `<table><thead><tr><th>Joueur</th><th>Points</th><th>Inscrit</th><th>Vu</th><th></th></tr></thead>
+                <tbody>${rows}</tbody></table>`;
+        }
+
+        /* ================= wiring ================= */
+        function gate(msg) {
+            $('view').innerHTML = `<div class="gate card"><p>${esc(msg)}</p>
+                <p><a href="/">Ouvrir SolRush et se connecter</a></p></div>`;
+            $('tools').innerHTML = '';
+            $('when').textContent = '';
+        }
+
+        // Last known count of connected players. Held here so that navigating
+        // does not blank the sidebar badge until the next ten-second poll — it
+        // used to vanish on every click and come back a moment later, which
+        // reads as a number that cannot be trusted.
+        let liveCount = null;
+
+        function paintNav() {
+            $('nav').innerHTML = Object.entries(VIEWS).map(([k, v]) => `
+              <button data-view="${k}" ${state.view === k ? 'aria-current="page"' : ''}>
+                ${icon(v.icon)}<span>${v.title}</span>
+                ${k === 'live' ? `<span class="tag" id="live-tag"
+                    ${liveCount === null ? 'hidden' : ''}>${liveCount ?? 0}</span>` : ''}
+              </button>`).join('');
+            for (const b of $('nav').querySelectorAll('[data-view]')) {
+                b.onclick = () => { document.body.classList.remove('open'); go(b.dataset.view); };
+            }
+        }
+
+        function paintTools() {
+            const v = VIEWS[state.view];
+            $('tools').innerHTML = (v.ranged ? rangeControl() : '')
+                + `<button id="refresh" aria-label="Actualiser">${icon('refresh')}</button>`;
+            $('refresh').onclick = () => draw(true);
+
+            const preset = $('preset');
+            if (preset) {
+                for (const b of preset.querySelectorAll('[data-preset]')) {
+                    b.onclick = () => {
+                        state.preset = b.dataset.preset;
+                        localStorage.setItem('adm_preset', state.preset);
+                        if (state.preset !== 'custom') { paintTools(); draw(); }
+                        else paintTools();
+                    };
+                }
+            }
+            const go_ = $('d-go');
+            if (go_) {
+                go_.onclick = () => {
+                    const f = $('d-from').value, t = $('d-to').value;
+                    if (!f || !t) return;
+                    // Swapped dates are a slip, not an error worth refusing.
+                    state.from = f <= t ? f : t;
+                    state.to = f <= t ? t : f;
+                    localStorage.setItem('adm_from', state.from);
+                    localStorage.setItem('adm_to', state.to);
+                    draw();
                 };
             }
         }
 
-        async function search() {
-            const term = $('q').value.trim();
-            const box = $('found');
-            if (term.length < 2) { box.innerHTML = '<p class="empty">Au moins deux caractères.</p>'; return; }
-            box.innerHTML = '<p class="empty">…</p>';
-            const r = await post('/api/admin/players', { q: term });
-            if (!r.ok) { box.innerHTML = '<p class="empty">Recherche impossible.</p>'; return; }
-            const { rows } = await r.json();
-            if (!rows.length) { box.innerHTML = '<p class="empty">Personne trouvé.</p>'; return; }
-            box.innerHTML = `<table style="margin-top:12px"><tbody>${rows.map((u) => `
-              <tr>
-                <td data-label="Joueur"><span class="who">${esc(u.nick)}</span>
-                    ${u.plus ? ' <span class="pill plus">Plus</span>' : ''}
-                    <div class="sub">${esc(u.email)}</div>
-                    <div class="sub">${n0(u.points)} pts · ${u.wins} V / ${u.losses} D · vu ${when(u.last_seen)}</div></td>
-                <td><button data-user="${esc(u.id)}" data-on="${u.plus ? '0' : '1'}">
-                    ${u.plus ? 'Retirer Plus' : 'Donner Plus'}</button></td>
-              </tr>`).join('')}</tbody></table>`;
-            for (const b of box.querySelectorAll('[data-user]')) {
-                b.addEventListener('click', () => togglePlus(b));
+        /* Renders are numbered so a slow one cannot land on top of a fast one.
+
+           Without this, clicking "90 j" while "7 j" is still in flight is a
+           coin toss: whichever request answers LAST writes the page, and the
+           losing combination is the worst one to look at — the heading is drawn
+           from the range now selected while the chart underneath is the data
+           from the range before it. Both look plausible; only one is true. */
+        let drawing = 0;
+
+        async function draw(fresh) {
+            const mine = ++drawing;
+            $('title').textContent = VIEWS[state.view].title;
+            $('view').innerHTML = '<p class="skel">…</p>';
+            paintTools();
+            try {
+                const html = await RENDER[state.view](fresh);
+                if (mine !== drawing) return;   // a newer draw has started; drop this one
+                $('view').innerHTML = html;
+                $('when').textContent = 'à ' + new Date().toLocaleTimeString('fr');
+                wire();
+            } catch (e) {
+                if (mine !== drawing) return;
+                if (e.status === 403) {
+                    return gate('Ce compte n’a pas accès à l’administration. '
+                        + 'Vérifie ADMIN_EMAILS sur le serveur.');
+                }
+                if (e.status === 401) return gate('Session expirée. Reconnecte-toi sur SolRush.');
+                $('view').innerHTML = `<div class="card"><p class="empty">Le serveur n’a pas répondu (${esc(e.message)}).</p></div>`;
             }
         }
 
-        async function togglePlus(btn) {
-            const on = btn.dataset.on === '1';
-            if (!confirm(on ? 'Donner SolRush Plus à ce joueur ?' : 'Retirer SolRush Plus à ce joueur ?')) return;
-            btn.disabled = true;
-            const r = await post('/api/admin/plus', { id: btn.dataset.user, on });
-            btn.disabled = false;
-            if (!r.ok) { btn.textContent = 'échec'; return; }
-            search();       // re-read rather than patch the row by hand
-            load();         // the counters moved too
-        }
-
-        async function recheck(btn) {
-            btn.disabled = true;
-            btn.textContent = '…';
-            const r = await post('/api/admin/cart', { cart: btn.dataset.cart });
-            const out = await r.json().catch(() => ({}));
-            if (!r.ok) { btn.disabled = false; btn.textContent = out.error || 'échec'; return; }
-            load();
-        }
-
-        async function load() {
-            if (!session?.access_token) {
-                return gate('Connecte-toi d’abord sur SolRush, avec le compte administrateur.');
+        /* Every handler is attached after each paint, because each view replaces
+           its own markup. Written once here rather than inside six renderers,
+           so a control that moves between views does not lose its behaviour. */
+        function wire() {
+            const seg = $('seg');
+            if (seg) {
+                for (const b of seg.querySelectorAll('[data-metric]')) {
+                    b.onclick = async () => {
+                        metric = b.dataset.metric;
+                        const d = await overview();
+                        // Only the chart is replaced. Redrawing the page would
+                        // throw away whatever is half typed in a box.
+                        $('chart-sec').innerHTML = chart(d.series, d.range.step, null, d.range);
+                        wire();
+                    };
+                }
             }
-            const r = await post('/api/admin/overview');
-            if (r.status === 403) {
-                return gate('Ce compte n’a pas accès à l’administration. '
-                    + 'Vérifie ADMIN_EMAILS sur le serveur.');
+
+            const filter = $('pay-filter');
+            if (filter) {
+                for (const b of filter.querySelectorAll('[data-status]')) {
+                    b.onclick = async () => {
+                        payState.status = b.dataset.status;
+                        payState.limit = 50;
+                        for (const x of filter.querySelectorAll('[data-status]')) {
+                            x.setAttribute('aria-pressed', String(x.dataset.status === payState.status));
+                        }
+                        const out = await api('/api/admin/payments', {
+                            ...bounds(), status: payState.status || undefined, limit: 50, offset: 0,
+                        });
+                        payState.rows = out.rows; payState.total = out.total;
+                        $('pay-box').innerHTML = paymentsTable();
+                        wire();
+                    };
+                }
             }
-            if (r.status === 401) return gate('Session expirée. Reconnecte-toi sur SolRush.');
-            if (!r.ok) return gate('Le serveur n’a pas répondu.');
-            $('gate').hidden = true;
-            $('panel').hidden = false;
-            render(await r.json());
+
+            const payMore = $('pay-more');
+            if (payMore) {
+                payMore.onclick = async () => {
+                    payMore.disabled = true;
+                    const out = await api('/api/admin/payments', {
+                        ...bounds(), status: payState.status || undefined,
+                        limit: 50, offset: payState.rows.length,
+                    });
+                    payState.rows = payState.rows.concat(out.rows);
+                    payState.total = out.total;
+                    $('pay-box').innerHTML = paymentsTable();
+                    wire();
+                };
+            }
+
+            const matchMore = $('match-more');
+            if (matchMore) {
+                matchMore.onclick = async () => {
+                    matchMore.disabled = true;
+                    const out = await api('/api/admin/matches',
+                        { ...bounds(), limit: 50, offset: matchState.rows.length });
+                    matchState.rows = matchState.rows.concat(out.rows);
+                    matchState.total = out.total;
+                    $('match-box').innerHTML = matchesTable();
+                    wire();
+                };
+            }
+
+            for (const b of document.querySelectorAll('[data-cart]')) {
+                b.onclick = async () => {
+                    b.disabled = true; b.textContent = '…';
+                    try {
+                        const out = await api('/api/admin/cart', { cart: b.dataset.cart });
+                        b.textContent = out.granted ? 'payé ✓' : (CART[out.status]?.[1] || out.status);
+                        cache.key = '';        // the totals moved
+                    } catch (e) {
+                        b.disabled = false; b.textContent = 'échec';
+                    }
+                };
+            }
+
+            const q = $('q');
+            if (q) {
+                const run = async () => {
+                    playerState.q = q.value.trim();
+                    const out = await api('/api/admin/players',
+                        { q: playerState.q, sort: playerState.sort, limit: 50 });
+                    playerState.rows = out.rows;
+                    $('players-box').innerHTML = playersTable();
+                    wire();
+                };
+                $('go').onclick = run;
+                q.onkeydown = (e) => { if (e.key === 'Enter') run(); };
+                for (const b of $('sortby').querySelectorAll('[data-sort]')) {
+                    b.onclick = () => { playerState.sort = b.dataset.sort; draw(); };
+                }
+            }
+
+            for (const b of document.querySelectorAll('[data-user]')) {
+                b.onclick = async () => {
+                    const on = b.dataset.on === '1';
+                    if (!confirm(on ? 'Donner SolRush Plus à ce joueur ?'
+                        : 'Retirer SolRush Plus à ce joueur ?')) return;
+                    b.disabled = true;
+                    try {
+                        await api('/api/admin/plus', { id: b.dataset.user, on });
+                        cache.key = '';
+                        draw();
+                    } catch { b.disabled = false; b.textContent = 'échec'; }
+                };
+            }
         }
 
-        load();
-        /* Who is online changes by the second, and this page is most useful
-           when it is left open on a phone while something is being watched.
-           Fifteen seconds is often enough to be live and rare enough not to
-           matter. */
-        setInterval(load, 15000);
+        function go(view) {
+            if (!VIEWS[view]) view = 'overview';
+            state.view = view;
+            if (location.hash !== '#/' + view) location.hash = '#/' + view;
+            paintNav();
+            draw();
+        }
+
+        /* The live count sits in the sidebar so it is visible from every view —
+           the one number worth knowing without navigating to it. It is the only
+           thing on a timer, and it costs no database query at all. */
+        async function pollLive() {
+            try {
+                const d = await api('/api/admin/live');
+                liveCount = d.live;
+                const tag = $('live-tag');
+                if (tag) { tag.hidden = false; tag.textContent = d.live; }
+                if (state.view === 'live') {
+                    $('view').innerHTML = await RENDER.live();
+                    wire();
+                }
+            } catch { /* a failed poll is not worth a message */ }
+        }
+
+        $('burger').onclick = () => document.body.classList.toggle('open');
+        $('scrim').onclick = () => document.body.classList.remove('open');
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') document.body.classList.remove('open');
+        });
+        window.addEventListener('hashchange', () => go(location.hash.replace('#/', '')));
+
+        if (!session?.access_token) {
+            paintNav();
+            gate('Connecte-toi d’abord sur SolRush, avec le compte administrateur.');
+        } else {
+            go(location.hash.replace('#/', '') || 'overview');
+            pollLive();
+            setInterval(pollLive, 10000);
+        }
     </script>
 </body>
 

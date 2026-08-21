@@ -68,7 +68,16 @@ async function account(email) {
   throw new Error(`cannot get a session for ${email}: ${made.error} / ${back.error}`);
 }
 
-const ROUTES = ['/api/admin/overview', '/api/admin/players', '/api/admin/plus', '/api/admin/cart'];
+/* Every admin route, listed by hand on purpose.
+
+   The mistake that matters here is not a broken check — it is a NEW route
+   added later without one. test/dom.test.mjs walks the server file and insists
+   each `case '/api/admin/…'` calls isAdmin; this walks the same list from the
+   outside and insists the server actually says no. */
+const ROUTES = [
+  '/api/admin/overview', '/api/admin/live', '/api/admin/payments',
+  '/api/admin/matches', '/api/admin/players', '/api/admin/plus', '/api/admin/cart',
+];
 
 const port = await new Promise((res) => {
   const s = createServer();
@@ -251,73 +260,197 @@ try {
   step(link?.href === '/admin/', `and it points at the panel: ${link?.href}`);
   step((link?.text || '').length > 2 && link?.w > 100,
     `with a translated label on a full-width button: "${link?.text}" (${link?.w}px)`);
-
   await send('Page.navigate', { url: URL_ + '/admin/' });
-  // Wait for the panel itself. "The document loaded" is true long before the
-  // fetch it makes has answered, and every figure below would read undefined.
-  let up = false;
-  for (let i = 0; i < 60 && !up; i++) {
-    up = await ev(`document.getElementById('panel')?.hidden === false
-                   && document.querySelectorAll('#panel .tile').length > 0`);
-    if (!up) await sleep(250);
+
+  /* Waits for a view to have finished drawing. "The document loaded" is true
+     long before the fetch it makes has answered, and every figure read in
+     between comes back undefined.
+
+     Waiting on tiles was the first attempt and it was wrong: the players view
+     has none, so this reported a perfectly good page as never rendering. The
+     honest signal is that the placeholder is gone and something is in its
+     place, whatever that something is. */
+  async function drawn(what) {
+    for (let i = 0; i < 80; i++) {
+      const ready = await ev(`!document.querySelector('#view .skel')
+        && document.querySelectorAll('#view .card, #view .tile').length > 0`);
+      if (ready) { await sleep(120); return true; }
+      await sleep(250);
+    }
+    console.log('  view said: ' + await ev(`document.getElementById('view')?.textContent?.trim().slice(0,200)`));
+    throw new Error(`${what} never rendered`);
   }
-  step(up, 'the panel renders for an admin session');
-  if (!up) {
-    console.log('  gate said: ' + await ev(`document.getElementById('gate')?.textContent?.trim()`));
-    throw new Error('panel never rendered');
-  }
+
+  await drawn('the overview');
+  step(true, 'the panel renders for an admin session');
+
+  const navCount = await ev(`document.querySelectorAll('#nav [data-view]').length`);
+  step(navCount === 6, `the sidebar lists ${navCount} sections`);
 
   /* Every number on the page, as text. This is the assertion that matters:
      a renamed or missing column does not throw, it prints "undefined" or
      "NaN" in a nice big font and looks like a design. */
-  const numbers = await ev(`JSON.stringify([...document.querySelectorAll(
-      '#panel .tile b, #panel .hero-main .amount, #panel .hero-side b')].map(e => e.textContent.trim()))`);
-  const bad = JSON.parse(numbers).filter((s) => /undefined|NaN|null/i.test(s) || s === '');
-  step(bad.length === 0, `${JSON.parse(numbers).length} headline figures, none broken`
-    + (bad.length ? ` — ${bad.join(', ')}` : ''));
+  async function figures(where) {
+    const raw = await ev(`JSON.stringify([...document.querySelectorAll(
+        '#view .tile b, #view .big, #view .hero-side b')].map(e => e.textContent.trim()))`);
+    const all = JSON.parse(raw);
+    const bad = all.filter((s) => /undefined|NaN|null/i.test(s) || s === '');
+    /* Not every view has headline figures — the players list is a table and
+       nothing else — so an empty set is fine here. What is never fine is a
+       figure that renders as "undefined": it does not throw, it prints in a
+       nice big font and looks like a design decision. */
+    const body = await ev(`document.getElementById('view').textContent`);
+    const inText = /undefined|NaN/.test(body);
+    step(bad.length === 0 && !inText,
+      `${where}: ${all.length} figure${all.length === 1 ? '' : 's'}, none broken`
+      + (bad.length ? ` — ${bad.join(', ')}` : '')
+      + (inText ? ' — but "undefined" appears in the page text' : ''));
+    return all;
+  }
 
-  const body = await ev(`document.getElementById('panel').textContent`);
-  step(/undefined|NaN/.test(body) === false, 'and nothing reads "undefined" anywhere on the page');
-
-  step(await ev(`document.querySelectorAll('#chart-sec .col').length === 14`),
-    'the chart draws fourteen days');
-  step(await ev(`[...document.querySelectorAll('#chart-sec .col i')]
-       .some(i => parseFloat(i.style.height) > 3)`),
-    'with at least one bar that has a height');
+  await figures('overview');
 
   // Revenue is the reason this page exists. It must be a figure, not a blank.
-  const revenue = await ev(`document.querySelector('#panel .hero-main .amount')?.textContent.trim()`);
+  const revenue = await ev(`document.querySelector('#view .big')?.textContent.replace(/\\s+/g,' ').trim()`);
   step(/[0-9]/.test(revenue || ''), `revenue is shown: "${revenue}"`);
 
-  const times = await ev(`JSON.stringify([...document.querySelectorAll('#panel .tile')]
-      .filter(t => /durée|temps/i.test(t.textContent))
-      .map(t => t.querySelector('b').textContent.trim()))`);
-  step(JSON.parse(times).length >= 4, `${JSON.parse(times).length} time figures: ${JSON.parse(times).join(', ')}`);
+  /* ---------- the range filter ---------- */
+  /* The whole point of this rebuild: the figures must actually follow the
+     window. A control that changes nothing but its own highlight is worse than
+     no control, because it is believed. */
+  const presets = await ev(`document.querySelectorAll('#preset [data-preset]').length`);
+  step(presets === 6, `${presets} range presets, including a custom one`);
+
+  /* Reads the heading AND the window the drawn data actually came from.
+
+     Counting columns alone was not enough, and the reason is worth keeping:
+     the heading is written from the range now selected, while the bars come
+     from whatever the server last answered. When a slow request landed after a
+     fast one those two disagreed — a 90-day heading over 30 days of bars — and
+     each half looked entirely reasonable on its own. The chart now carries the
+     range of its own data, so the two can be compared. */
+  const readRange = () => ev(`(() => {
+    const card = document.getElementById('chart-card');
+    return JSON.stringify({
+      cap: document.querySelector('#view .cap')?.textContent.trim(),
+      cols: document.querySelectorAll('#chart-sec .col').length,
+      from: card?.dataset.from || '', to: card?.dataset.to || '',
+      step: Number(card?.dataset.step || 0),
+    });
+  })()`);
+
+  // What the browser would have asked for, so the answer can be held to it.
+  const wanted = (days) => ev(`(() => {
+    const end = new Date(); end.setHours(0,0,0,0); end.setDate(end.getDate() + 1);
+    const start = new Date(end); start.setDate(start.getDate() - ${days});
+    return start.toISOString() + '|' + end.toISOString();
+  })()`);
+
+  async function rangeIs(preset, days, expectCols) {
+    await ev(`document.querySelector('#preset [data-preset="${preset}"]').click()`);
+    await drawn(`the ${preset} view`);
+    const got = JSON.parse(await readRange());
+    const want = (await wanted(days)).split('|');
+    step(got.from === want[0] && got.to === want[1],
+      `${preset}: the drawn data covers the window asked for (${got.from.slice(0, 10)} → ${got.to.slice(0, 10)})`);
+    step(got.cols === expectCols, `${preset}: ${got.cols} columns, step ${got.step}`);
+    return got;
+  }
+
+  const seven = await rangeIs('7', 7, 7);
+  const ninety = await rangeIs('90', 90, 90);
+  step(seven.cap !== ninety.cap,
+    `and the heading follows the window: "${seven.cap}" then "${ninety.cap}"`);
+
+  // A year is bucketed into weeks rather than 365 hair-thin bars.
+  const year = await rangeIs('365', 365, 53);
+  step(!/^\d+ [a-zû.]+ → \d+ [a-zû.]+$/i.test(year.cap || ''),
+    `a range crossing a year says which year: "${year.cap}"`);
+
+  /* A custom period, chosen by date. Three days is deliberately narrow: it
+     proves the dates are being used rather than rounded to a preset. */
+  await ev(`document.querySelector('#preset [data-preset="custom"]').click()`);
+  await sleep(400);
+  const picked = await ev(`(() => {
+    const end = new Date(); end.setHours(12,0,0,0);
+    const start = new Date(end); start.setDate(start.getDate() - 2);
+    const iso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')
+                   + '-' + String(d.getDate()).padStart(2,'0');
+    const f = document.getElementById('d-from'), t = document.getElementById('d-to');
+    if (!f || !t) return null;
+    f.value = iso(start); t.value = iso(end);
+    document.getElementById('d-go').click();
+    return iso(start) + ' → ' + iso(end);
+  })()`);
+  step(Boolean(picked), 'the custom period exposes two date fields and an apply button');
+  await drawn('the custom period');
+  const custom = JSON.parse(await readRange());
+  step(custom.cols === 3, `a three-day period draws ${custom.cols} columns (${picked})`);
+
+  await rangeIs('30', 30, 30);
 
   // The chart is redrawn in place, so its buttons have to survive the redraw.
   await ev(`document.querySelector('#seg [data-metric="revenue"]').click()`);
-  await sleep(300);
+  await sleep(500);
   step(await ev(`document.querySelector('#seg [data-metric="revenue"]')?.getAttribute('aria-pressed') === 'true'
-       && document.querySelectorAll('#chart-sec .col').length === 14`),
+       && document.querySelectorAll('#chart-sec .col').length === 30`),
     'switching the chart to revenue redraws it and keeps its buttons working');
-  await ev(`document.querySelector('#seg [data-metric="games"]').click()`);
-  await sleep(300);
+
+  /* ---------- every section opens ---------- */
+  for (const view of ['revenue', 'players', 'matches', 'time', 'live']) {
+    await ev(`document.querySelector('#nav [data-view="${view}"]').click()`);
+    await drawn(view);
+    await figures(view);
+    const title = await ev(`document.getElementById('title').textContent`);
+    step(await ev(`document.querySelector('#nav [data-view="${view}"]')
+         ?.getAttribute('aria-current') === 'page'`),
+      `${view} opens and is marked current ("${title}")`);
+  }
+
+  // The payments filter is the one control that queries with a WHERE clause
+  // built from a button.
+  await ev(`document.querySelector('#nav [data-view="revenue"]').click()`);
+  await drawn('revenue');
+  const filtered = await ev(`(async () => {
+    const b = document.querySelector('#pay-filter [data-status="completed"]');
+    if (!b) return 'no filter';
+    b.click();
+    await new Promise(r => setTimeout(r, 900));
+    return [...document.querySelectorAll('#pay-box .pill')].map(p => p.textContent.trim()).join(',');
+  })()`);
+  step(!String(filtered).includes('abandonné') && !String(filtered).includes('en attente'),
+    `filtering payments to "payés" leaves only those: ${filtered || 'no rows'}`);
+
+  await ev(`document.querySelector('#nav [data-view="overview"]').click()`);
+  await drawn('overview');
 
   /* ---------- fits a phone ---------- */
   const mobile = JSON.parse(await ev(`JSON.stringify({
     inner: innerWidth,
     scroll: document.documentElement.scrollWidth,
-    thead: getComputedStyle(document.querySelector('#panel thead')).display,
+    sideOff: document.getElementById('side').getBoundingClientRect().right <= 1,
+    burger: getComputedStyle(document.getElementById('burger')).display !== 'none',
   })`));
   step(mobile.scroll <= mobile.inner + 1,
     `no sideways scroll at ${mobile.inner}px (content ${mobile.scroll}px)`);
-  step(mobile.thead === 'none', 'tables become blocks on a phone rather than scrolling');
+  step(mobile.sideOff && mobile.burger,
+    'the sidebar is off-screen on a phone and a menu button is offered instead');
+
+  // The drawer has to actually come in, and go away again.
+  await ev(`document.getElementById('burger').click()`);
+  await sleep(400);
+  step(await ev(`document.getElementById('side').getBoundingClientRect().left >= -1`),
+    'tapping the menu brings the sidebar in');
+  const shotDrawer = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  writeFileSync(process.env.ADMIN_SHOT_NAV || 'admin-390-nav.png', Buffer.from(shotDrawer.data, 'base64'));
+  await ev(`document.getElementById('scrim').click()`);
+  await sleep(400);
+  step(await ev(`document.getElementById('side').getBoundingClientRect().right <= 1`),
+    'and tapping outside puts it away');
 
   /* Two pictures of the phone, because one of them is always the wrong one.
-     The whole page is 9 000 pixels tall — legible only shrunk to a thumbnail,
-     where a broken line wrap disappears — and the first screen alone hides
-     everything below it. The full one found the wrapping bugs; the short one
-     is the one worth looking at afterwards. */
+     The full page is legible only shrunk to a thumbnail, where a broken line
+     wrap disappears; the first screen alone hides everything below it. */
   const shotM = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   writeFileSync(process.env.ADMIN_SHOT_M || 'admin-390.png', Buffer.from(shotM.data, 'base64'));
   const shotF = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
@@ -325,18 +458,27 @@ try {
 
   /* ---------- and a desktop ---------- */
   await send('Emulation.setDeviceMetricsOverride',
-    { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
-  await sleep(700);
+    { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await sleep(800);
   const desk = JSON.parse(await ev(`JSON.stringify({
     inner: innerWidth,
     scroll: document.documentElement.scrollWidth,
-    thead: getComputedStyle(document.querySelector('#panel thead')).display,
+    sideVisible: document.getElementById('side').getBoundingClientRect().width > 100,
+    thead: getComputedStyle(document.querySelector('#view thead') || document.body).display,
   })`));
   step(desk.scroll <= desk.inner + 1, `no sideways scroll at ${desk.inner}px`);
-  step(desk.thead !== 'none', 'and the table headers come back on a wide screen');
+  step(desk.sideVisible, 'the sidebar is permanently open on a wide screen');
 
   const shotD = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
   writeFileSync(process.env.ADMIN_SHOT_D || 'admin-1280.png', Buffer.from(shotD.data, 'base64'));
+
+  // A table page, at desktop width, to prove the headers come back.
+  await ev(`document.querySelector('#nav [data-view="matches"]').click()`);
+  await drawn('matches');
+  step(await ev(`getComputedStyle(document.querySelector('#view thead')).display !== 'none'`),
+    'and table headers come back on a wide screen');
+  const shotT = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
+  writeFileSync(process.env.ADMIN_SHOT_T || 'admin-1280-matches.png', Buffer.from(shotT.data, 'base64'));
 
   step(blew.length === 0, blew.length ? `page threw: ${blew.join(' | ')}` : 'nothing threw while rendering');
 } catch (e) {

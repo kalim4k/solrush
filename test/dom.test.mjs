@@ -345,6 +345,15 @@ test('a completed purchase is acknowledged, once', () => {
 test('every admin route checks that the caller is an admin', () => {
   const server = readFileSync(join(ROOT, 'server/index.js'), 'utf8');
   const routes = [...server.matchAll(/case '(\/api\/admin\/[^']+)': \{([\s\S]*?)\n    \}/g)];
+
+  /* Counted against the file, not against a floor.
+     "At least four" was the original rule, and it would have passed happily
+     while the regex quietly failed to match a fifth route — which is the one
+     case that matters, because an unmatched route is an UNCHECKED route. */
+  const declared = (server.match(/case '\/api\/admin\//g) || []).length;
+  assert.equal(routes.length, declared,
+    `${declared} admin routes are declared but only ${routes.length} could be read;`
+    + ' one of them ends in a shape this test cannot see, so it is not being checked');
   assert.ok(routes.length >= 4, `expected the admin routes to be found, got ${routes.length}`);
   for (const [, path, body] of routes) {
     assert.match(body, /await isAdmin\(auth\)/,
