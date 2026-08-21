@@ -207,6 +207,7 @@ export default {
   login: 'Log in',
   register: 'Create account',
   logout: 'Log out',
+  admin_panel: "Admin panel",
   do_login: 'Log in',
   do_register: 'Create account',
   email: 'Email',

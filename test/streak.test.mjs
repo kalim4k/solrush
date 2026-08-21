@@ -74,6 +74,40 @@ test('a player who has never finished a game has nothing at all', () => {
   assert.equal(v.streakLost, 0);
 });
 
+/* The row is created by two callers at once, every time somebody new opens the
+   game: POST /api/profile and the socket's hello both ask for it, both find
+   nothing, and both insert. One of them then violates streaks_user_id_key.
+
+   That is not a tidiness problem. The socket swallows its error; /api/profile
+   answers 500, and the browser reads a failed profile load as "the token was
+   refused" — so it puts the login form back in front of somebody who has just
+   this second finished registering.
+
+   Checked against the source rather than by racing the database, because a race
+   that reproduces four times in five is a test that passes one run in five with
+   the bug still in place. This one cannot pass by luck. */
+test('creating a streak row tolerates losing the race to create it', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, join } = await import('node:path');
+  const src = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '..', 'server', 'streak.js'), 'utf8');
+
+  const inserts = [...src.matchAll(/INSERT INTO streaks[\s\S]*?`/g)].map((m) => m[0]);
+  assert.ok(inserts.length >= 2, `expected the two INSERTs, found ${inserts.length}`);
+  for (const stmt of inserts) {
+    assert.match(stmt, /ON CONFLICT DO NOTHING/,
+      'an unguarded INSERT here throws whenever two callers create the row at once:\n  '
+      + stmt.replace(/\s+/g, ' ').trim());
+  }
+
+  // …and the losing caller has to end up with the row somebody else wrote,
+  // rather than with the null that ON CONFLICT DO NOTHING returns.
+  const load = src.slice(src.indexOf('async function load('));
+  assert.match(load.slice(0, load.indexOf('\n}')), /made \|\| await one\(/,
+    'losing the insert must fall back to reading the row, not return null');
+});
+
 test('the free monthly restore is spent only for the month it was used in', () => {
   const now = new Date();
   const thisMonth = { ...rowFrom(2, 5), free_used_month: now.toISOString().slice(0, 10) };

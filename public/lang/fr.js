@@ -208,6 +208,7 @@ export default {
   login: 'Se connecter',
   register: 'Créer un compte',
   logout: 'Se déconnecter',
+  admin_panel: "Espace admin",
   do_login: 'Se connecter',
   do_register: 'Créer un compte',
   email: 'E-mail',

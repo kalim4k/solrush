@@ -209,6 +209,7 @@ export default {
   login: 'Войти',
   register: 'Создать аккаунт',
   logout: 'Выйти',
+  admin_panel: "Панель администратора",
   do_login: 'Войти',
   do_register: 'Создать аккаунт',
   email: 'Почта',

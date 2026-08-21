@@ -153,6 +153,23 @@ CREATE TABLE IF NOT EXISTS plus_carts (
 CREATE INDEX IF NOT EXISTS plus_carts_open_idx
   ON plus_carts (user_id) WHERE status = 'waiting_payment';
 
+-- What was actually charged, in FCFA, written down at the moment the cart was
+-- created.
+--
+-- Revenue used to be computed as "number of paid carts × today's price", which
+-- is only correct while the price has never changed — and the first thing that
+-- happens to a price is that it changes. It also silently reported nothing at
+-- all whenever MAKETOU_PRICE was unset, which is the arrangement we are moving
+-- towards. A sum of amounts recorded per sale survives both.
+--
+-- NULL on every row written before this column existed; the admin panel counts
+-- those separately rather than pretending they were free.
+ALTER TABLE plus_carts ADD COLUMN IF NOT EXISTS amount integer;
+
+-- The revenue query reads completed carts by date and nothing else.
+CREATE INDEX IF NOT EXISTS plus_carts_paid_idx
+  ON plus_carts (created_at DESC) WHERE status = 'completed';
+
 /* ---------- web push ---------- */
 CREATE TABLE IF NOT EXISTS push_subs (
   endpoint   text PRIMARY KEY,

@@ -825,16 +825,63 @@ $('btn-friend-join').addEventListener('click', () => {
 /* ================= invite a friend by link ================= */
 // Without these two counters there is no way to tell whether invitations are
 // being sent at all, let alone whether anyone arrives through them.
-function logEvent(kind) {
+/* The field is `name`, and it was `kind` here for as long as this function has
+   existed — so /api/event answered 400 to every call, the .catch() below threw
+   the answer away, and both invite counters have recorded exactly nothing.
+   Nothing visible broke, which is why it lasted: the only symptom was a table
+   that said no one has ever shared a link. */
+function logEvent(name, meta) {
     try {
         fetch('/api/event', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ device: deviceId, kind }),
+            body: JSON.stringify({ device: deviceId, name, meta }),
             keepalive: true,
         }).catch(() => { });
     } catch { /* analytics must never break the game */ }
 }
+
+/* ---------- how long people actually stay ---------- */
+
+/* Visible seconds, reported when the page goes away.
+
+   Not "time since the tab opened": a game left open in a background tab all
+   afternoon is not an afternoon of playing, and counting it that way would
+   make the average say whatever the most forgetful player did. The clock runs
+   only while the page is on screen and is banked every time it leaves.
+
+   sendBeacon rather than fetch on the way out, because a tab being closed does
+   not wait for a request; keepalive is the fallback where it is missing. */
+let visibleSince = document.visibilityState === 'visible' ? Date.now() : 0;
+
+function bankSession() {
+    if (!visibleSince) return;
+    const secs = Math.round((Date.now() - visibleSince) / 1000);
+    visibleSince = 0;
+    // Under five seconds is a bounce or a double event, not a visit worth
+    // averaging. The server clamps the upper end again; a number arriving from
+    // a browser is a claim, not a measurement.
+    if (secs < 5 || secs > 7200) return;
+    const payload = JSON.stringify({ device: deviceId, name: 'session', meta: { s: secs } });
+    try {
+        if (navigator.sendBeacon
+            && navigator.sendBeacon('/api/event', new Blob([payload], { type: 'application/json' }))) return;
+        fetch('/api/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+        }).catch(() => { });
+    } catch { /* analytics must never break the game */ }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') bankSession();
+    else if (!visibleSince) visibleSince = Date.now();
+});
+// pagehide fires where visibilitychange does not on iOS, and banking twice is
+// harmless: the second call has nothing left to bank.
+window.addEventListener('pagehide', bankSession);
 
 // example.com/#K7X2P9 — the friend taps it and lands straight in the room,
 // with nothing to read out or type in.
@@ -2300,6 +2347,9 @@ function updateProfileUI() {
        account" buttons stacked on top of each other. */
     $('auth-buttons').hidden = logged || !$('auth-form').hidden;
     $('logged-box').hidden = !logged;
+    // Server's answer, never a guess from the address: the game does not know
+    // which addresses are administrators and must not be told.
+    $('btn-admin').hidden = !(logged && profile?.admin);
     $('vibro-toggle').checked = vibroOn;
     $('sound-toggle').checked = soundOn;
 }

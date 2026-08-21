@@ -149,7 +149,7 @@
          behind the WR_EMBED check below, because every portal that embeds this
          game forbids running our ads inside theirs. -->
 
-    <link rel="stylesheet" href="/css/style.css?v=152">
+    <link rel="stylesheet" href="/css/style.css?v=154">
     <!-- Are we inside somebody else's page? Every game portal forbids running
        your own ads inside theirs, and the ad scripts below start the moment
        the parser reaches them — long before any module could stop one. So the
@@ -870,6 +870,17 @@
             </div>
 
             <div id="logged-box" class="auth-box" hidden>
+                <!-- The way into /admin/, for the one account allowed there.
+
+                     It used to be reachable only by typing the address, which
+                     is fine on the machine that built it and useless on the
+                     phone where a stuck payment actually gets noticed.
+
+                     Shown when /api/profile says so, and that is a display
+                     decision and nothing else: every admin route checks the
+                     account behind the token for itself, so forcing this link
+                     visible buys a tour of four 403s. -->
+                <a class="btn-big btn-outline" id="btn-admin" href="/admin/" data-i18n="admin_panel" hidden></a>
                 <button class="btn-big btn-outline" id="btn-logout" data-i18n="logout"></button>
             </div>
 
@@ -959,7 +970,7 @@
          endpoints against Neon, so there is no vendor bundle to load and no
          second service to sign up for. The Cloudflare analytics beacon that sat
          here was keyed to another account and has been removed with it. -->
-    <script type="module" src="/js/app.js?v=152"></script>
+    <script type="module" src="/js/app.js?v=154"></script>
 </body>
 
 </html>

@@ -24,7 +24,8 @@
     "smoke:fit": "node scripts/fit-check.mjs",
     "smoke:links": "node scripts/link-check.mjs",
     "smoke:plus": "node scripts/plus-check.mjs",
-    "smoke:replay": "node scripts/replay-check.mjs"
+    "smoke:replay": "node scripts/replay-check.mjs",
+    "smoke:admin": "node scripts/admin-check.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1",

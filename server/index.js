@@ -28,7 +28,7 @@ import {
   DEFAULT_SKIN, DEFAULT_BADGE, DEFAULT_PACK, DEFAULT_FINISH,
   resolveSkin, resolveBadge, resolvePack, resolveFinish, isPhoto,
 } from '../public/js/cosmetics.js';
-import { createCart, getCart, configured as plusConfigured, PAID } from './maketou.js';
+import { createCart, getCart, configured as plusConfigured, PAID, PRICE } from './maketou.js';
 import { getStreak, touchStreak, restoreStreak, mergeDeviceStreak } from './streak.js';
 import { checkNick, randomNick } from '../public/js/nick.js';
 
@@ -292,7 +292,15 @@ async function api(req, res, path, url) {
     }
 
     case '/api/event': {
-      const { device, name, meta } = body;
+      /* `kind` is the client's older spelling of the same field, and accepting
+         it is not politeness — it is the fix for a bug where this route
+         answered 400 to every call the game ever made. logEvent() sent
+         { device, kind } and swallowed the response, so the two invite counters
+         recorded nothing for as long as they have existed and looked, from
+         here, like a game nobody shares. The browser is fixed too, but a
+         browser holds its script for a year and this costs one line. */
+      const { device, meta } = body;
+      const name = body.name || body.kind;
       if (!name) return json(res, 400, { error: 'no_name' });
       await q('INSERT INTO events (device, name, meta) VALUES ($1, $2, $3)',
         [device ? String(device).slice(0, 64) : null, String(name).slice(0, 64), meta || null]);
@@ -343,7 +351,13 @@ async function api(req, res, path, url) {
       const user = await userById(auth.sub);
       if (!user) return json(res, 404, { error: 'no_user' });
       const streak = await getStreak({ userId: user.id }, Number(body.tz) || 0);
-      return json(res, 200, { ...user, ...streak });
+      /* Whether this account may open /admin/, so the game can show the way in
+         instead of expecting the address to be typed from memory.
+
+         It is a hint for the interface and nothing more: every admin route
+         re-derives this from the token on its own. A browser that sets it to
+         true gets a link that leads to four 403s. */
+      return json(res, 200, { ...user, ...streak, admin: await isAdmin(auth) });
     }
 
     case '/api/leaderboard': {
@@ -394,7 +408,7 @@ async function api(req, res, path, url) {
       }
       online.sort((a, b) => Number(b.playing) - Number(a.playing) || b.points - a.points);
 
-      const [stats, carts, matches] = await Promise.all([
+      const [stats, money, time, session, series, carts, matches] = await Promise.all([
         one(`SELECT
                (SELECT count(*)::int FROM users)                                   AS accounts,
                (SELECT count(*)::int FROM users WHERE plus)                        AS plus,
@@ -402,12 +416,92 @@ async function api(req, res, path, url) {
                (SELECT count(*)::int FROM matches WHERE ended_at > now() - interval '1 day')  AS games_1d,
                (SELECT count(*)::int FROM matches WHERE ended_at > now() - interval '7 days') AS games_7d,
                (SELECT count(*)::int FROM matches)                                 AS games_all,
-               (SELECT count(*)::int FROM plus_carts WHERE status = 'completed')   AS paid,
-               (SELECT count(*)::int FROM plus_carts WHERE status = 'waiting_payment') AS pending`),
-        q(`SELECT c.cart_id, c.status, c.created_at, c.checked_at, u.nick, u.email, u.plus
+               (SELECT count(*)::int FROM plus_carts)                              AS attempts,
+               (SELECT count(*)::int FROM plus_carts WHERE status = 'waiting_payment') AS pending,
+               -- distinct people who finished a game this week, which is the
+               -- closest thing to "players" the tables hold. Guests have no id
+               -- and are not counted; the number is a floor, not a total.
+               (SELECT count(*)::int FROM (
+                  SELECT p0_user AS u FROM matches
+                   WHERE ended_at > now() - interval '7 days' AND p0_user IS NOT NULL
+                  UNION
+                  SELECT p1_user FROM matches
+                   WHERE ended_at > now() - interval '7 days' AND p1_user IS NOT NULL) x) AS players_7d`),
+
+        /* Money. Summed from what each sale was recorded as being worth, not
+           from a count multiplied by today's price — the moment the price
+           changes, the second method rewrites history.
+
+           Sales made before the amount column existed have no amount of their
+           own and fall back to the catalogue price. That is a guess, so the
+           number of guesses is returned alongside and the page says so; what it
+           must not do is report those sales as worth nothing, which is what
+           SUM over a NULL quietly does. Applied inside the query rather than
+           added on afterwards, so the week, the month and the total are all
+           counted the same way — a headline that included the estimate while
+           "7 derniers jours" did not was a discrepancy with no explanation. */
+        one(`SELECT
+               count(*)::int                                                       AS paid,
+               (count(*) FILTER (WHERE amount IS NULL))::int                       AS unpriced,
+               (COALESCE(sum(COALESCE(amount, $1)), 0))::int                        AS all_time,
+               (COALESCE(sum(COALESCE(amount, $1)) FILTER (WHERE created_at > now() - interval '30 days'), 0))::int AS d30,
+               (COALESCE(sum(COALESCE(amount, $1)) FILTER (WHERE created_at > now() - interval '7 days'), 0))::int  AS d7,
+               (count(*) FILTER (WHERE created_at > now() - interval '30 days'))::int AS paid_30d
+             FROM plus_carts WHERE status = 'completed'`, [PRICE]),
+
+        /* How long a game lasts.
+           The median is here beside the mean on purpose: a single match left
+           open on a forgotten tab drags an average anywhere, and the median
+           does not move. Anything past two hours is discarded outright as a
+           tab nobody closed rather than a game somebody played. */
+        one(`SELECT
+               (COALESCE(avg(secs), 0))::int                                       AS avg_game,
+               (COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY secs), 0))::int AS med_game,
+               (COALESCE(sum(secs) FILTER (WHERE ended_at > now() - interval '7 days'), 0))::int AS played_7d,
+               (COALESCE(sum(secs), 0))::int                                       AS played_all,
+               count(*)::int                                                       AS counted
+             FROM (SELECT ended_at, EXTRACT(epoch FROM ended_at - started_at) AS secs
+                     FROM matches
+                    WHERE ended_at IS NOT NULL AND ended_at > started_at
+                      AND ended_at - started_at < interval '2 hours') t`),
+
+        /* How long people stay, which is a different question from how long a
+           game lasts — most of the time on this site is spent in the menus, on
+           the leaderboard and waiting for an opponent. The browser reports the
+           seconds it was actually visible; this adds them up per device per
+           day, so somebody who opens the game four times in an evening counts
+           once, with their evening's total. */
+        one(`WITH s AS (
+               SELECT device, date_trunc('day', at) AS day,
+                      sum(LEAST(GREATEST((meta->>'s')::int, 0), 7200)) AS secs
+                 FROM events
+                WHERE name = 'session' AND device IS NOT NULL
+                  AND at > now() - interval '30 days'
+                  AND (meta->>'s') ~ '^[0-9]+$'
+                GROUP BY 1, 2)
+             SELECT (COALESCE(avg(secs), 0))::int AS avg_day,
+                    count(*)::int                 AS device_days,
+                    (COALESCE(count(DISTINCT device), 0))::int AS devices
+               FROM s`),
+
+        // Fourteen days, for the chart. Zero-filled by generate_series, so a
+        // day nobody played is a gap in the bars rather than a missing column.
+        q(`SELECT to_char(d, 'YYYY-MM-DD') AS day,
+                  (SELECT count(*) FROM matches m
+                    WHERE m.ended_at >= d AND m.ended_at < d + interval '1 day')::int AS games,
+                  (SELECT count(*) FROM users u
+                    WHERE u.created_at >= d AND u.created_at < d + interval '1 day')::int AS signups,
+                  (SELECT COALESCE(sum(COALESCE(c.amount, $1)), 0) FROM plus_carts c
+                    WHERE c.status = 'completed'
+                      AND c.created_at >= d AND c.created_at < d + interval '1 day')::int AS revenue
+             FROM generate_series(date_trunc('day', now()) - interval '13 days',
+                                  date_trunc('day', now()), interval '1 day') d
+            ORDER BY d`, [PRICE]),
+
+        q(`SELECT c.cart_id, c.status, c.created_at, c.checked_at, c.amount, u.nick, u.email, u.plus
              FROM plus_carts c JOIN users u ON u.id = c.user_id
             ORDER BY c.created_at DESC LIMIT 25`),
-        q(`SELECT token, mode, p0_nick, p1_nick, winner, reason, moves, ended_at
+        q(`SELECT token, mode, p0_nick, p1_nick, winner, reason, moves, started_at, ended_at
              FROM matches WHERE ended_at IS NOT NULL
             ORDER BY ended_at DESC LIMIT 15`),
       ]);
@@ -415,10 +509,13 @@ async function api(req, res, path, url) {
       return json(res, 200, {
         online,
         stats,
-        // An estimate, and labelled as one in the page: it multiplies the count
-        // of paid carts by TODAY'S price, which is wrong for anything sold at a
-        // different one. The count is the fact; the total is a convenience.
-        price: Number(process.env.MAKETOU_PRICE) || 0,
+        money,
+        time,
+        session,
+        series: series.rows,
+        // The catalogue price, so the page can label the currency and price a
+        // sale that predates the amount column.
+        price: PRICE,
         carts: carts.rows,
         matches: matches.rows,
         payments: plusConfigured(),
@@ -508,9 +605,9 @@ async function api(req, res, path, url) {
           user, redirectURL: publicOrigin(req) + '/plus/done',
         });
         await q(
-          `INSERT INTO plus_carts (cart_id, user_id) VALUES ($1, $2)
+          `INSERT INTO plus_carts (cart_id, user_id, amount) VALUES ($1, $2, $3)
              ON CONFLICT (cart_id) DO NOTHING`,
-          [cart.id, user.id],
+          [cart.id, user.id, cart.amount || null],
         );
         return json(res, 200, { url: cart.url });
       } catch (e) {

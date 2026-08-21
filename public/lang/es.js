@@ -206,6 +206,7 @@ export default {
   login: 'Iniciar sesión',
   register: 'Crear cuenta',
   logout: 'Cerrar sesión',
+  admin_panel: "Panel de administración",
   do_login: 'Iniciar sesión',
   do_register: 'Crear cuenta',
   email: 'Correo',

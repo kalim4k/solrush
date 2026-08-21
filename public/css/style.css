@@ -1870,6 +1870,20 @@ html[data-theme="dark"] .legal-links span {
 a.btn-big {
     text-decoration: none;
     display: block;
+    /* A <button> centres its label on its own; an anchor inherits alignment
+       from whatever it is sitting in, so without this the one in the profile
+       reads flush left while the button under it is centred. */
+    text-align: center;
+}
+
+/* Not redundant with the browser's own [hidden] rule, which this would
+   otherwise defeat: `display: none` from the UA stylesheet loses to ANY author
+   declaration, whatever the specificity. So the line above would have shown the
+   "Admin panel" link on every profile in the game — the element carried
+   hidden="", the property read true, and it was on screen anyway. Anything that
+   sets display on an element the code hides needs its own [hidden] rule. */
+a.btn-big[hidden] {
+    display: none;
 }
 
 /* victory screen (competitor style) */

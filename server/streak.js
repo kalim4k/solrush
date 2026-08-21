@@ -30,19 +30,34 @@ const MIN_RESTORE_DAYS = 3;
 // After a week the streak is not a lapse, it is a different era.
 const RESTORE_WINDOW_DAYS = 7;
 
+/* Read the row, creating it the first time.
+
+   ON CONFLICT DO NOTHING is load-bearing, and the race it closes is not a rare
+   one — it is what every new account did.
+
+   Opening the game fires two things at once: POST /api/profile, and the socket
+   hello. Both ask for this row, both find nothing, and both INSERT. One of them
+   then violates streaks_user_id_key. The socket swallows its error and carries
+   on; /api/profile does not, so it answers 500, the browser's fetchProfile
+   returns null, and afterLogin() reads that as "the token was refused" and puts
+   the login form back on screen — in front of somebody who had just, that
+   second, successfully registered.
+
+   Losing the insert is normal here, so it is not an error: the row the other
+   caller wrote is the row we wanted, and the second SELECT fetches it. */
 async function load(owner) {
   const where = owner.userId ? 'user_id = $1' : 'device_id = $1';
   const key = owner.userId || owner.deviceId;
-  let row = await one(`SELECT * FROM streaks WHERE ${where}`, [key]);
-  if (!row) {
-    row = await one(
-      owner.userId
-        ? `INSERT INTO streaks (user_id) VALUES ($1) RETURNING *`
-        : `INSERT INTO streaks (device_id) VALUES ($1) RETURNING *`,
-      [key],
-    );
-  }
-  return row;
+  const row = await one(`SELECT * FROM streaks WHERE ${where}`, [key]);
+  if (row) return row;
+
+  const made = await one(
+    owner.userId
+      ? `INSERT INTO streaks (user_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING *`
+      : `INSERT INTO streaks (device_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING *`,
+    [key],
+  );
+  return made || await one(`SELECT * FROM streaks WHERE ${where}`, [key]);
 }
 
 // Exported for the tests. Everything interesting about a streak is decided

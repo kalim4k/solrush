@@ -209,6 +209,7 @@ export default {
   login: 'ورود',
   register: 'ساختن حساب',
   logout: 'خروج',
+  admin_panel: "پنل مدیریت",
   do_login: 'ورود',
   do_register: 'ساختن حساب',
   email: 'رایانامه',

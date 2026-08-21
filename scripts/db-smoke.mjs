@@ -76,6 +76,26 @@ try {
   if (good.status !== 200 || !good.data.token) throw new Error('login failed');
   ok('login returns a token');
 
+  /* Two profile calls at once, on an account whose streak row does not exist
+     yet. This is not a contrived case — it is what opening the game does, once
+     through /api/profile and once through the socket's hello, and both used to
+     INSERT the same row. The loser hit streaks_user_id_key, /api/profile
+     answered 500, and the browser read that as a refused token and showed the
+     login form to somebody who had just registered.
+
+     Probabilistic, and said out loud: the window between the SELECT and the
+     INSERT is small, and with the bug in place this passed on the first try.
+     Six calls widen it, but the assertion that cannot pass by luck is the one
+     in test/streak.test.mjs, which reads the statement itself. This is here for
+     what that one cannot see — that the whole round trip really does survive
+     it. */
+  const many = await Promise.all(Array.from({ length: 6 },
+    () => post('/api/profile', { tz: -120 }, reg[1].token)));
+  if (many.some((r) => r.status !== 200)) {
+    throw new Error(`simultaneous profile loads raced: ${many.map((r) => r.status).join(', ')}`);
+  }
+  ok('six profile loads at once all succeed on a brand-new account');
+
   const prof = await post('/api/profile', { tz: 0 }, good.data.token);
   if (prof.data.nick !== users[0].nick) throw new Error('profile returned the wrong account');
   ok(`profile reads back: ${prof.data.nick}, ${prof.data.points} points`);

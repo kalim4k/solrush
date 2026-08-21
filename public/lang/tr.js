@@ -209,6 +209,7 @@ export default {
   login: 'Giriş yap',
   register: 'Hesap oluştur',
   logout: 'Çıkış yap',
+  admin_panel: "Yönetim paneli",
   do_login: 'Giriş yap',
   do_register: 'Hesap oluştur',
   email: 'E-posta',
