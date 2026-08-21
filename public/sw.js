@@ -7,7 +7,10 @@
 const CACHE = 'solrush-v13';
 
 // Addresses that are documents in their own right rather than the game shell.
-const DOCS = /^\/(rules|regles|strategy|strategie)\/?$/;
+// /admin is here for the same reason as the rest — it must not be stored as the
+// offline game — and it is never precached: a panel showing player emails and
+// payment records has no business sitting in a browser cache.
+const DOCS = /^\/(rules|regles|strategy|strategie|admin)\/?$/;
 
 const SHELL = [
   '/',

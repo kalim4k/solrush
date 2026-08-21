@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="fr" translate="no" class="notranslate">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#eef1f7">
+    <title>SolRush — Administration</title>
+
+    <!-- Never indexed, never followed, never cached by a crawler. A panel that
+         shows player emails and payment records has no business in a search
+         result, and robots.txt alone is a request rather than an instruction. -->
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="google" content="notranslate">
+
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+
+    <!-- Self-contained, like the rules pages: the app stylesheet is built
+         around the game's own markup and carries the whole board with it. The
+         palette below is copied from style.css so the two still match. -->
+    <style>
+        :root {
+            --bg: #eef1f7;
+            --card: #ffffff;
+            --text: #1d2440;
+            --muted: #8b93af;
+            --violet: #2f6df6;
+            --bezel: #c9d2e2;
+            --good: #21c07a;
+            --warn: #e0a13a;
+            --bad: #e0555f;
+            --shadow: 0 8px 24px rgba(50, 70, 130, .12);
+        }
+
+        :root:not([data-theme="light"]) {
+            color-scheme: light;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #12141f;
+                --card: #1b1f30;
+                --text: #e8eaf6;
+                --muted: #8b93b4;
+                --bezel: #2c3349;
+                --shadow: 0 10px 28px rgba(0, 0, 0, .5);
+                color-scheme: dark;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            padding: 0 14px env(safe-area-inset-bottom, 16px);
+        }
+
+        .wrap {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 18px 0 60px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--bezel);
+        }
+
+        header h1 {
+            font-size: 1.15rem;
+            margin: 0;
+            flex: 1;
+            min-width: 0;
+        }
+
+        header a,
+        .linkish {
+            color: var(--violet);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: .9rem;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--bezel);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            padding: 14px 16px;
+            margin: 14px 0;
+        }
+
+        .card h2 {
+            font-size: .95rem;
+            margin: 0 0 10px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--muted);
+        }
+
+        /* auto-fit, so the same grid is two columns on a phone and six on a
+           desktop without a media query for each step */
+        .tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 10px;
+        }
+
+        .tile {
+            background: var(--card);
+            border: 1px solid var(--bezel);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .tile b {
+            display: block;
+            font-size: 1.5rem;
+            line-height: 1.1;
+        }
+
+        .tile span {
+            font-size: .76rem;
+            color: var(--muted);
+        }
+
+        .tile.alert b {
+            color: var(--warn);
+        }
+
+        /* Tables become cards on a narrow screen rather than scrolling
+           sideways: a payment row read one thumb-width at a time is a payment
+           row nobody reads. */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .88rem;
+        }
+
+        th {
+            text-align: start;
+            font-size: .74rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: var(--muted);
+            padding: 0 8px 6px 0;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 8px 8px 8px 0;
+            border-top: 1px solid var(--bezel);
+            vertical-align: middle;
+        }
+
+        .who {
+            font-weight: 600;
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: .8rem;
+            word-break: break-word;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: .74rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .pill.ok {
+            background: rgba(33, 192, 122, .15);
+            color: var(--good);
+        }
+
+        .pill.wait {
+            background: rgba(224, 161, 58, .16);
+            color: var(--warn);
+        }
+
+        .pill.no {
+            background: rgba(224, 85, 95, .14);
+            color: var(--bad);
+        }
+
+        .pill.plus {
+            background: rgba(224, 182, 74, .2);
+            color: #9a7715;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-inline-end: 6px;
+            background: var(--good);
+        }
+
+        .dot.away {
+            background: var(--muted);
+        }
+
+        button {
+            font: inherit;
+            cursor: pointer;
+            border-radius: 10px;
+            border: 1px solid var(--bezel);
+            background: transparent;
+            color: var(--violet);
+            padding: 6px 12px;
+            font-size: .82rem;
+            font-weight: 600;
+        }
+
+        button.solid {
+            background: var(--violet);
+            border-color: var(--violet);
+            color: #fff;
+        }
+
+        button:disabled {
+            opacity: .5;
+            cursor: default;
+        }
+
+        input {
+            font: inherit;
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--bezel);
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .empty {
+            color: var(--muted);
+            font-size: .88rem;
+            padding: 6px 0;
+        }
+
+        .gate {
+            max-width: 420px;
+            margin: 60px auto;
+            text-align: center;
+        }
+
+        @media (max-width: 620px) {
+
+            /* One row becomes one block. The header cells are gone and each
+               value carries its own label instead. */
+            table,
+            tbody,
+            tr,
+            td {
+                display: block;
+                width: 100%;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tr {
+                border-top: 1px solid var(--bezel);
+                padding: 10px 0;
+            }
+
+            td {
+                border: 0;
+                padding: 2px 0;
+            }
+
+            td[data-label]::before {
+                content: attr(data-label) " ";
+                color: var(--muted);
+                font-size: .74rem;
+                text-transform: uppercase;
+                letter-spacing: .05em;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <header>
+            <h1>SolRush — Administration</h1>
+            <span id="refreshed" class="sub"></span>
+            <a href="/">← le jeu</a>
+        </header>
+
+        <div id="gate" class="gate" hidden></div>
+        <main id="panel" hidden></main>
+    </div>
+
+    <script type="module">
+        /* Reads the session the game already stored. Same origin, so the token
+           is right there — no second login to build, no second password to
+           leak. The server checks the ACCOUNT behind that token against
+           ADMIN_EMAILS on every request; nothing here is trusted. */
+        const KEY = 'wr_session';
+        const session = (() => {
+            try { return JSON.parse(localStorage.getItem(KEY) || 'null'); }
+            catch { return null; }
+        })();
+
+        const $ = (id) => document.getElementById(id);
+        const esc = (s) => String(s ?? '').replace(/[&<>"]/g,
+            (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+        const post = (path, body) => fetch(path, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + (session?.access_token || ''),
+            },
+            body: JSON.stringify(body || {}),
+        });
+
+        function gate(msg) {
+            $('panel').hidden = true;
+            $('gate').hidden = false;
+            $('gate').innerHTML = `<div class="card"><p>${esc(msg)}</p>
+                <p><a href="/">Ouvrir SolRush et se connecter</a></p></div>`;
+        }
+
+        const when = (iso) => iso
+            ? new Date(iso).toLocaleString('fr', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+            : '—';
+
+        const CART = {
+            completed: ['ok', 'payé'],
+            waiting_payment: ['wait', 'en attente'],
+            payment_failed: ['no', 'échoué'],
+            abandoned: ['no', 'abandonné'],
+        };
+
+        function render(d) {
+            const s = d.stats;
+            const paidTotal = d.price ? ` · ~${(s.paid * d.price).toLocaleString('fr')} FCFA` : '';
+            const live = d.online.filter((p) => !p.away).length;
+
+            const tiles = `
+              <div class="tiles">
+                <div class="tile"><b>${live}</b><span>en ligne</span></div>
+                <div class="tile"><b>${s.accounts}</b><span>comptes</span></div>
+                <div class="tile"><b>${s.plus}</b><span>Plus</span></div>
+                <div class="tile"><b>${s.paid}</b><span>achats payés</span></div>
+                <div class="tile ${s.pending ? 'alert' : ''}"><b>${s.pending}</b><span>en attente</span></div>
+                <div class="tile"><b>${s.games_1d}</b><span>parties 24 h</span></div>
+                <div class="tile"><b>${s.games_7d}</b><span>parties 7 j</span></div>
+                <div class="tile"><b>${s.new_7d}</b><span>comptes 7 j</span></div>
+              </div>
+              <p class="sub" style="margin:8px 2px 0">
+                ${s.games_all} parties au total${paidTotal}
+                ${d.price ? ' — estimation au prix actuel, pas un relevé comptable.' : ''}
+                ${d.payments ? '' : ' — paiements non configurés sur ce serveur.'}
+              </p>`;
+
+            const onlineRows = d.online.length ? d.online.map((p) => `
+              <tr>
+                <td data-label="Joueur"><span class="dot ${p.away ? 'away' : ''}"></span>
+                    <span class="who">${esc(p.nick)}</span>
+                    ${p.plus ? '<span class="pill plus">Plus</span>' : ''}</td>
+                <td data-label="Compte">${p.account ? 'inscrit' : '<span class="sub">invité</span>'}</td>
+                <td data-label="Points">${p.points}</td>
+                <td data-label="État">${p.away ? '<span class="sub">déconnecté</span>'
+                    : p.playing ? `en partie <span class="sub">${esc(p.room || '')}</span>`
+                        : p.room ? `salon <span class="sub">${esc(p.room)}</span>` : 'dans les menus'}</td>
+              </tr>`).join('') : '';
+
+            const cartRows = d.carts.map((c) => {
+                const [cls, label] = CART[c.status] || ['wait', c.status];
+                return `<tr>
+                  <td data-label="Joueur"><span class="who">${esc(c.nick)}</span>
+                      <div class="sub">${esc(c.email)}</div></td>
+                  <td data-label="État"><span class="pill ${cls}">${label}</span>
+                      ${c.plus ? '<span class="pill plus">Plus</span>' : ''}</td>
+                  <td data-label="Créé">${when(c.created_at)}</td>
+                  <td>${c.status === 'waiting_payment'
+                        ? `<button data-cart="${esc(c.cart_id)}">Vérifier</button>` : ''}</td>
+                </tr>`;
+            }).join('');
+
+            const matchRows = d.matches.map((m) => `
+              <tr>
+                <td data-label="Partie"><span class="who">${esc(m.p0_nick)}</span> · ${esc(m.p1_nick)}
+                    <div class="sub">${esc(m.mode)} — ${m.moves} coups — ${esc(m.reason || '')}</div></td>
+                <td data-label="Fin">${when(m.ended_at)}</td>
+                <td>${m.token ? `<a class="linkish" href="/r/${esc(m.token)}">revoir</a>` : ''}</td>
+              </tr>`).join('');
+
+            $('panel').innerHTML = `
+              ${tiles}
+              <div class="card">
+                <h2>En ligne maintenant (${live})</h2>
+                ${onlineRows ? `<table><thead><tr><th>Joueur</th><th>Compte</th><th>Points</th><th>État</th></tr></thead>
+                  <tbody>${onlineRows}</tbody></table>`
+                    : '<p class="empty">Personne de connecté.</p>'}
+              </div>
+              <div class="card">
+                <h2>Rechercher un joueur</h2>
+                <div class="row"><input id="q" placeholder="email ou pseudo" autocomplete="off">
+                  <button class="solid" id="go">Chercher</button></div>
+                <div id="found"></div>
+              </div>
+              <div class="card">
+                <h2>Paiements</h2>
+                ${cartRows ? `<table><thead><tr><th>Joueur</th><th>État</th><th>Créé</th><th></th></tr></thead>
+                  <tbody>${cartRows}</tbody></table>`
+                    : '<p class="empty">Aucune tentative d’achat pour l’instant.</p>'}
+              </div>
+              <div class="card">
+                <h2>Dernières parties</h2>
+                ${matchRows ? `<table><tbody>${matchRows}</tbody></table>`
+                    : '<p class="empty">Aucune partie terminée.</p>'}
+              </div>`;
+
+            $('refreshed').textContent = 'à ' + new Date().toLocaleTimeString('fr');
+            $('go').addEventListener('click', search);
+            $('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
+            for (const b of $('panel').querySelectorAll('[data-cart]')) {
+                b.addEventListener('click', () => recheck(b));
+            }
+        }
+
+        async function search() {
+            const term = $('q').value.trim();
+            const box = $('found');
+            if (term.length < 2) { box.innerHTML = '<p class="empty">Au moins deux caractères.</p>'; return; }
+            box.innerHTML = '<p class="empty">…</p>';
+            const r = await post('/api/admin/players', { q: term });
+            if (!r.ok) { box.innerHTML = '<p class="empty">Recherche impossible.</p>'; return; }
+            const { rows } = await r.json();
+            if (!rows.length) { box.innerHTML = '<p class="empty">Personne trouvé.</p>'; return; }
+            box.innerHTML = `<table><tbody>${rows.map((u) => `
+              <tr>
+                <td data-label="Joueur"><span class="who">${esc(u.nick)}</span>
+                    ${u.plus ? '<span class="pill plus">Plus</span>' : ''}
+                    <div class="sub">${esc(u.email)}</div>
+                    <div class="sub">${u.points} pts — ${u.wins}V / ${u.losses}D — vu ${when(u.last_seen)}</div></td>
+                <td><button data-user="${esc(u.id)}" data-on="${u.plus ? '0' : '1'}">
+                    ${u.plus ? 'Retirer Plus' : 'Donner Plus'}</button></td>
+              </tr>`).join('')}</tbody></table>`;
+            for (const b of box.querySelectorAll('[data-user]')) {
+                b.addEventListener('click', () => togglePlus(b));
+            }
+        }
+
+        async function togglePlus(btn) {
+            const on = btn.dataset.on === '1';
+            if (!confirm(on ? 'Donner SolRush Plus à ce joueur ?' : 'Retirer SolRush Plus à ce joueur ?')) return;
+            btn.disabled = true;
+            const r = await post('/api/admin/plus', { id: btn.dataset.user, on });
+            btn.disabled = false;
+            if (!r.ok) { btn.textContent = 'échec'; return; }
+            search();       // re-read rather than patch the row by hand
+            load();         // the counters moved too
+        }
+
+        async function recheck(btn) {
+            btn.disabled = true;
+            btn.textContent = '…';
+            const r = await post('/api/admin/cart', { cart: btn.dataset.cart });
+            const out = await r.json().catch(() => ({}));
+            if (!r.ok) { btn.disabled = false; btn.textContent = out.error || 'échec'; return; }
+            load();
+        }
+
+        async function load() {
+            if (!session?.access_token) {
+                return gate('Connecte-toi d’abord sur SolRush, avec le compte administrateur.');
+            }
+            const r = await post('/api/admin/overview');
+            if (r.status === 403) {
+                return gate('Ce compte n’a pas accès à l’administration. '
+                    + 'Vérifie ADMIN_EMAILS sur le serveur.');
+            }
+            if (r.status === 401) return gate('Session expirée. Reconnecte-toi sur SolRush.');
+            if (!r.ok) return gate('Le serveur n’a pas répondu.');
+            $('gate').hidden = true;
+            $('panel').hidden = false;
+            render(await r.json());
+        }
+
+        load();
+        /* Who is online changes by the second, and this page is most useful
+           when it is left open on a phone while something is being watched.
+           Fifteen seconds is often enough to be live and rare enough not to
+           matter. */
+        setInterval(load, 15000);
+    </script>
+</body>
+
+</html>

@@ -230,6 +230,32 @@ const clientIp = (req) =>
   (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
   req.socket.remoteAddress || '?';
 
+/* ================= admin =================
+
+   Who may see the panel. Read from the environment rather than written down
+   here, for two reasons: this repository is public, and an address in it is an
+   address a spam harvester collects; and adding somebody should not require a
+   deploy.
+
+   Set ADMIN_EMAILS to one address or several separated by commas. Unset, NOBODY
+   is an admin — which is the safe way for this to fail. It checks the account
+   the token belongs to, not a claim inside the token, so an old token cannot
+   carry admin rights that were taken away since. */
+function adminEmails() {
+  return new Set(
+    (process.env.ADMIN_EMAILS || '')
+      .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
+  );
+}
+
+async function isAdmin(auth) {
+  if (!auth) return false;
+  const allowed = adminEmails();
+  if (!allowed.size) return false;
+  const user = await userById(auth.sub);
+  return Boolean(user && allowed.has(String(user.email).toLowerCase()));
+}
+
 /* ================= REST ================= */
 
 async function api(req, res, path, url) {
@@ -336,6 +362,126 @@ async function api(req, res, path, url) {
       if (!owner.userId && !owner.deviceId) return json(res, 400, { error: 'no_owner' });
       const out = await restoreStreak(owner, Number(body.tz) || 0, Boolean(body.watched));
       return json(res, out.error ? 400 : 200, out);
+    }
+
+    /* ---------- admin ---------- */
+
+    /* Everything the person running this needs to see, in one request.
+
+       Money moves through this app now, and until this existed there was no way
+       to look at it: a payment that stuck in waiting_payment could only be
+       discovered by the player writing in — and contact@solrush.site bounces,
+       so they would not. */
+    case '/api/admin/overview': {
+      if (!await isAdmin(auth)) return json(res, 403, { error: 'forbidden' });
+
+      /* Who is connected right now. This comes from the socket hub rather than
+         the database, because "online" is not a fact any table holds — it is
+         who has a socket open this second. Seats held for somebody who dropped
+         mid-game are marked away rather than dropped from the list: they are
+         the ones worth seeing. */
+      const online = [];
+      for (const c of hub.clients.values()) {
+        online.push({
+          nick: c.nick,
+          account: Boolean(c.userId),
+          plus: Boolean(c.plus),
+          points: c.points || 0,
+          room: c.room?.code || null,
+          playing: Boolean(c.room?.live),
+          away: Boolean(c.awaySince),
+        });
+      }
+      online.sort((a, b) => Number(b.playing) - Number(a.playing) || b.points - a.points);
+
+      const [stats, carts, matches] = await Promise.all([
+        one(`SELECT
+               (SELECT count(*)::int FROM users)                                   AS accounts,
+               (SELECT count(*)::int FROM users WHERE plus)                        AS plus,
+               (SELECT count(*)::int FROM users WHERE created_at > now() - interval '7 days') AS new_7d,
+               (SELECT count(*)::int FROM matches WHERE ended_at > now() - interval '1 day')  AS games_1d,
+               (SELECT count(*)::int FROM matches WHERE ended_at > now() - interval '7 days') AS games_7d,
+               (SELECT count(*)::int FROM matches)                                 AS games_all,
+               (SELECT count(*)::int FROM plus_carts WHERE status = 'completed')   AS paid,
+               (SELECT count(*)::int FROM plus_carts WHERE status = 'waiting_payment') AS pending`),
+        q(`SELECT c.cart_id, c.status, c.created_at, c.checked_at, u.nick, u.email, u.plus
+             FROM plus_carts c JOIN users u ON u.id = c.user_id
+            ORDER BY c.created_at DESC LIMIT 25`),
+        q(`SELECT token, mode, p0_nick, p1_nick, winner, reason, moves, ended_at
+             FROM matches WHERE ended_at IS NOT NULL
+            ORDER BY ended_at DESC LIMIT 15`),
+      ]);
+
+      return json(res, 200, {
+        online,
+        stats,
+        // An estimate, and labelled as one in the page: it multiplies the count
+        // of paid carts by TODAY'S price, which is wrong for anything sold at a
+        // different one. The count is the fact; the total is a convenience.
+        price: Number(process.env.MAKETOU_PRICE) || 0,
+        carts: carts.rows,
+        matches: matches.rows,
+        payments: plusConfigured(),
+      });
+    }
+
+    // Find somebody. Email or nickname, because a player writing in gives you
+    // whichever they remember.
+    case '/api/admin/players': {
+      if (!await isAdmin(auth)) return json(res, 403, { error: 'forbidden' });
+      const term = String(body.q || '').trim().slice(0, 80);
+      if (term.length < 2) return json(res, 200, { rows: [] });
+      const rows = await q(
+        `SELECT id, email, nick, points, wins, losses, plus, veteran, created_at, last_seen
+           FROM users
+          WHERE email ILIKE '%' || $1 || '%' OR nick ILIKE '%' || $1 || '%'
+          ORDER BY last_seen DESC LIMIT 25`, [term],
+      );
+      return json(res, 200, { rows: rows.rows });
+    }
+
+    /* Grant or revoke Plus by hand.
+
+       This replaces scripts/set-plus.mjs, which had to be run from a terminal
+       on a laptop — no use at all when somebody's payment sticks and they are
+       waiting. Logged to the events table, because an admin action that changes
+       what somebody owns should leave a trace. */
+    case '/api/admin/plus': {
+      if (!await isAdmin(auth)) return json(res, 403, { error: 'forbidden' });
+      const { id, on } = body;
+      if (!id) return json(res, 400, { error: 'no_id' });
+      const row = await one(
+        `UPDATE users SET plus = $2 WHERE id = $1 RETURNING id, nick, plus`,
+        [id, Boolean(on)],
+      );
+      if (!row) return json(res, 404, { error: 'no_user' });
+      await q(`INSERT INTO events (device, name, meta) VALUES (NULL, $1, $2)`,
+        ['admin_plus', JSON.stringify({ by: auth.sub, user: id, on: Boolean(on) })]);
+      return json(res, 200, row);
+    }
+
+    /* Ask Maketou about one cart again, now.
+
+       The player's own reconnection already does this, but only when they come
+       back. Somebody who paid, hit a problem and wrote in should not have to be
+       told "open the game again" — this settles it from here. */
+    case '/api/admin/cart': {
+      if (!await isAdmin(auth)) return json(res, 403, { error: 'forbidden' });
+      if (!plusConfigured()) return json(res, 503, { error: 'payments_off' });
+      const cartId = String(body.cart || '');
+      if (!cartId) return json(res, 400, { error: 'no_cart' });
+
+      const row = await one(`SELECT user_id FROM plus_carts WHERE cart_id = $1`, [cartId]);
+      if (!row) return json(res, 404, { error: 'no_cart' });
+
+      let cart;
+      try { cart = await getCart(cartId); }
+      catch (e) { return json(res, 502, { error: 'lookup_failed', detail: e.message }); }
+
+      await q(`UPDATE plus_carts SET status = $2, checked_at = now() WHERE cart_id = $1`,
+        [cartId, cart.status]);
+      if (cart.status === PAID) await q(`UPDATE users SET plus = true WHERE id = $1`, [row.user_id]);
+      return json(res, 200, { status: cart.status, granted: cart.status === PAID });
     }
 
     /* ---------- SolRush Plus ---------- */

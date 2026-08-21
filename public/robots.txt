@@ -5,4 +5,13 @@ Allow: /
 # nothing anyone can index.
 Disallow: /api/
 
+# The admin panel. It is already behind an account check and already sends
+# noindex, so this is the belt to that pair of braces — and it keeps the address
+# out of the crawl logs that anyone can buy.
+Disallow: /admin/
+
+# A replay is "anyone with the link", which is not the same promise as "in a
+# search result". The API route sends X-Robots-Tag as well.
+Disallow: /r/
+
 Sitemap: https://solrush.site/sitemap.xml

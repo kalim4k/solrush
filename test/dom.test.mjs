@@ -338,3 +338,43 @@ test('a completed purchase is acknowledged, once', () => {
   assert.match(body, /renderCosmetics\(\)/, 'the locked swatches have to unlock');
   assert.match(body, /updateProfileUI\(\)/, 'and the offer banner has to go away');
 });
+
+/* The admin panel is the highest-value target on this site: player emails,
+   payment records, and a button that grants a paid product. The mistake that
+   matters is not a broken check — it is a NEW route added later without one. */
+test('every admin route checks that the caller is an admin', () => {
+  const server = readFileSync(join(ROOT, 'server/index.js'), 'utf8');
+  const routes = [...server.matchAll(/case '(\/api\/admin\/[^']+)': \{([\s\S]*?)\n    \}/g)];
+  assert.ok(routes.length >= 4, `expected the admin routes to be found, got ${routes.length}`);
+  for (const [, path, body] of routes) {
+    assert.match(body, /await isAdmin\(auth\)/,
+      `${path} does not check isAdmin — it would be open to anybody with any account`);
+  }
+});
+
+test('admin access is read from the environment, not written into the repo', () => {
+  const server = readFileSync(join(ROOT, 'server/index.js'), 'utf8');
+  assert.match(server, /process\.env\.ADMIN_EMAILS/,
+    'the allowlist has to come from the environment');
+  // This repository is public. An address in it is an address a harvester takes.
+  assert.doesNotMatch(server, /[\w.+-]+@(gmail|yahoo|hotmail|outlook|proton)\./i,
+    'a personal email address is hardcoded in the server');
+
+  // Unset must mean nobody, not everybody.
+  const fn = server.slice(server.indexOf('async function isAdmin'));
+  const body = fn.slice(0, fn.indexOf('\n}') + 2);
+  assert.match(body, /if \(!allowed\.size\) return false/,
+    'an empty allowlist must refuse everyone rather than admit everyone');
+  assert.match(body, /await userById/,
+    'it must check the account behind the token, not a claim inside it');
+});
+
+test('the admin panel is kept out of search results', () => {
+  const page = readFileSync(join(ROOT, 'public/admin/index.html'), 'utf8');
+  assert.match(page, /name="robots"[^>]*noindex/, 'the panel must send noindex');
+  const robots = readFileSync(join(ROOT, 'public/robots.txt'), 'utf8');
+  assert.match(robots, /Disallow: \/admin\//, 'and be disallowed in robots.txt');
+
+  const sitemap = readFileSync(join(ROOT, 'public/sitemap.xml'), 'utf8');
+  assert.doesNotMatch(sitemap, /\/admin\//, 'and never listed in the sitemap');
+});

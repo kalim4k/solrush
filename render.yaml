@@ -65,6 +65,10 @@ services:
       - key: MAKETOU_PRICE
         sync: false
 
+      # Who may open /admin/. Comma-separated emails. Empty means nobody.
+      - key: ADMIN_EMAILS
+        sync: false
+
       # Optional: TURN relay for voice in friend rooms. Without it, voice still
       # works for most pairs and fails cleanly for the rest.
       - key: TURN_URL
