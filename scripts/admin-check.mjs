@@ -42,6 +42,9 @@ const CHROME = [
 if (!CHROME) { console.error('no Chrome found'); process.exit(1); }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// The phone width the page is driven at, so assertions about "full width" have
+// something to compare against.
+const innerWidthGuess = 390;
 let failed = false;
 const step = (ok, t) => { if (!ok) failed = true; console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${t}`); };
 
@@ -318,8 +321,103 @@ try {
   /* The whole point of this rebuild: the figures must actually follow the
      window. A control that changes nothing but its own highlight is worse than
      no control, because it is believed. */
-  const presets = await ev(`document.querySelectorAll('#preset [data-preset]').length`);
-  step(presets === 6, `${presets} range presets, including a custom one`);
+  /* The picker is one button that states the current range and a panel behind
+     it. Six buttons in a row was the first shape and it was wrong: it filled a
+     phone's width, and the dates being looked at were nowhere on screen. */
+  const trigger = await ev(`(() => {
+    const b = document.getElementById('range-btn');
+    return b ? JSON.stringify({
+      name: b.querySelector('.range-name')?.textContent.trim(),
+      dates: b.querySelector('.range-dates')?.textContent.trim(),
+      open: b.getAttribute('aria-expanded'),
+    }) : null;
+  })()`);
+  step(Boolean(trigger), 'the range is chosen from one button, not a row of them');
+  const tr = JSON.parse(trigger || '{}');
+  step(/jours|mois|début|choisie/i.test(tr.name || ''),
+    `it names the period in words: "${tr.name}"`);
+  step(/\d/.test(tr.dates || ''), `and spells out the dates: "${tr.dates}"`);
+
+  step(await ev(`document.getElementById('range-pop').hidden === true`),
+    'the panel starts closed');
+  await ev(`document.getElementById('range-btn').click()`);
+  await sleep(250);
+  const opened = JSON.parse(await ev(`JSON.stringify({
+    open: document.getElementById('range-pop').hidden === false,
+    scrim: !!document.getElementById('pop-scrim'),
+    dated: [...document.querySelectorAll('#range-pop [data-preset] small')]
+             .filter(s => /\\d/.test(s.textContent)).length,
+  })`));
+  step(opened.open && opened.scrim, 'tapping it opens the panel over a scrim');
+  step(opened.dated >= 4,
+    `${opened.dated} presets show the dates they resolve to, before being chosen`);
+
+  // On a phone it should be a sheet at the bottom, within thumb reach, not a
+  // dropdown hanging off the top corner.
+  const sheet = JSON.parse(await ev(`(() => {
+    const r = document.getElementById('range-pop').getBoundingClientRect();
+    return JSON.stringify({ bottom: Math.round(innerHeight - r.bottom), width: Math.round(r.width) });
+  })()`));
+  step(sheet.bottom <= 2 && sheet.width >= innerWidthGuess - 2,
+    `it comes up from the bottom of the phone (${sheet.width}px wide, ${sheet.bottom}px from the bottom)`);
+
+  /* What a FINGER would hit, not what .click() reaches.
+
+     These are different questions and the difference has already bitten once:
+     the panel was rendered underneath its own scrim, so every assertion here
+     passed — .click() dispatches straight at an element and ignores what is
+     covering it — while a real tap landed on the scrim and shut the panel. The
+     only honest test of "can this be used" is to ask the page what is on top
+     at that point on the glass. */
+  const hit = await ev(`(() => {
+    const b = document.querySelector('#range-pop [data-preset="7"]');
+    const r = b.getBoundingClientRect();
+    const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return JSON.stringify({
+      reaches: !!el && (el === b || b.contains(el)),
+      instead: el ? (el.id || el.className || el.tagName) : 'nothing',
+    });
+  })()`);
+  const h = JSON.parse(hit);
+  step(h.reaches, `a tap on a period actually lands on it (hit: ${h.instead})`);
+  /* When this fails it is almost always an ancestor that has quietly become a
+     stacking context — a transform, a filter, an opacity below 1, or
+     position:sticky, which makes one on its own. Print the chain rather than
+     leaving the next person to rediscover that. */
+  if (!h.reaches) {
+    console.log('  layers at that point: ' + await ev(`(() => {
+      const b = document.querySelector('#range-pop [data-preset="7"]');
+      const r = b.getBoundingClientRect();
+      return document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+        .slice(0, 5).map(e => e.id || e.className || e.tagName).join(' over ');
+    })()`));
+    console.log('  ancestors of the panel: ' + await ev(`(() => {
+      const out = []; let el = document.getElementById('range-pop');
+      while (el && el !== document.documentElement) {
+        const s = getComputedStyle(el);
+        out.push((el.id || el.className || el.tagName)
+          + ' [' + s.position + ' z:' + s.zIndex
+          + (s.transform !== 'none' ? ' transform' : '')
+          + (s.filter !== 'none' ? ' filter' : '')
+          + (s.backdropFilter !== 'none' ? ' backdrop-filter' : '')
+          + (s.opacity !== '1' ? ' opacity' : '') + ']');
+        el = el.parentElement;
+      }
+      return out.join(' < ');
+    })()`));
+  }
+  const shotPop = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  writeFileSync(process.env.ADMIN_SHOT_POP || 'admin-390-period.png',
+    Buffer.from(shotPop.data, 'base64'));
+
+  const presets = await ev(`document.querySelectorAll('#range-pop [data-preset]').length`);
+  step(presets === 6, `${presets} choices, including a custom one`);
+
+  await ev(`document.getElementById('pop-scrim').click()`);
+  await sleep(200);
+  step(await ev(`document.getElementById('range-pop').hidden === true
+       && !document.getElementById('pop-scrim')`),
+    'and tapping outside closes it again');
 
   /* Reads the heading AND the window the drawn data actually came from.
 
@@ -347,8 +445,12 @@ try {
   })()`);
 
   async function rangeIs(preset, days, expectCols) {
-    await ev(`document.querySelector('#preset [data-preset="${preset}"]').click()`);
+    await ev(`document.getElementById('range-btn').click()`);
+    await sleep(200);
+    await ev(`document.querySelector('#range-pop [data-preset="${preset}"]').click()`);
     await drawn(`the ${preset} view`);
+    step(await ev(`document.getElementById('range-pop').hidden === true`),
+      `${preset}: choosing a period closes the panel`);
     const got = JSON.parse(await readRange());
     const want = (await wanted(days)).split('|');
     step(got.from === want[0] && got.to === want[1],
@@ -356,6 +458,69 @@ try {
     step(got.cols === expectCols, `${preset}: ${got.cols} columns, step ${got.step}`);
     return got;
   }
+
+  /* ---------- the skeleton ---------- */
+  /* Read in the same tick as the click, so what is caught is the placeholder
+     and not the answer. The point of a skeleton is that nothing MOVES when the
+     data lands, so the count of tiles it draws is compared with the count the
+     real view draws — a skeleton of the wrong shape is just a differently
+     shaped jump. */
+  /* A second of latency, for this measurement only.
+
+     Without it the skeleton is a race: the answer comes back in about four
+     hundred milliseconds, so whether the screenshot catches the placeholder or
+     the finished page is luck, and a picture that is sometimes of the wrong
+     thing is worse than no picture. Slowing the network makes the moment last
+     long enough to photograph, and it is put back straight afterwards. */
+  await send('Network.enable');
+  await send('Network.emulateNetworkConditions',
+    { offline: false, latency: 1200, downloadThroughput: -1, uploadThroughput: -1 });
+
+  await ev(`document.getElementById('range-btn').click()`);
+  await sleep(200);
+  const loading = JSON.parse(await ev(`(() => {
+    document.querySelector('#range-pop [data-preset="90"]').click();
+    return JSON.stringify({
+      skel: !!document.querySelector('#view .skel'),
+      busy: document.getElementById('view').getAttribute('aria-busy'),
+      tiles: document.querySelectorAll('#view .tile').length,
+      bars: document.querySelectorAll('#view .sk-bars .sk').length,
+      words: document.getElementById('view').textContent.trim().length,
+      height: document.getElementById('view').scrollHeight,
+    });
+  })()`));
+  step(loading.skel && loading.busy === 'true',
+    'reloading shows a skeleton, and says so for a screen reader');
+  // No magic number here: the count that matters is the one the real view
+  // settles on, compared below. A hardcoded 8 was simply wrong — the overview
+  // draws eleven tiles — and it made a correct skeleton look broken.
+  step(loading.tiles > 0 && loading.bars > 0,
+    `the skeleton has the shape of what is coming: ${loading.tiles} tiles, ${loading.bars} bars`);
+  step(loading.words === 0, 'and no placeholder text to read');
+
+  const shotSkel = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  writeFileSync(process.env.ADMIN_SHOT_SKEL || 'admin-390-loading.png',
+    Buffer.from(shotSkel.data, 'base64'));
+  step(await ev(`!!document.querySelector('#view .skel')`),
+    'and the skeleton was still up when it was photographed');
+
+  await send('Network.emulateNetworkConditions',
+    { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+
+  await drawn('the loaded view');
+  const settled = JSON.parse(await ev(`JSON.stringify({
+    tiles: document.querySelectorAll('#view .tile').length,
+    height: document.getElementById('view').scrollHeight,
+  })`));
+  step(settled.tiles === loading.tiles,
+    `the loaded view has the same ${settled.tiles} tiles`);
+  /* Height is the assertion that actually means "nothing jumps". The tile
+     count can match while the placeholder is a hundred pixels shorter — which
+     it was, until the skeleton was given the same <section> spacing as the
+     real thing. */
+  const drift = Math.abs(settled.height - loading.height);
+  step(drift <= settled.height * 0.08,
+    `and stands ${loading.height}px tall against ${settled.height}px loaded — ${drift}px of movement`);
 
   const seven = await rangeIs('7', 7, 7);
   const ninety = await rangeIs('90', 90, 90);
@@ -369,8 +534,14 @@ try {
 
   /* A custom period, chosen by date. Three days is deliberately narrow: it
      proves the dates are being used rather than rounded to a preset. */
-  await ev(`document.querySelector('#preset [data-preset="custom"]').click()`);
-  await sleep(400);
+  await ev(`document.getElementById('range-btn').click()`);
+  await sleep(200);
+  await ev(`document.querySelector('#range-pop [data-preset="custom"]').click()`);
+  await sleep(300);
+  /* Choosing "custom" must NOT close the panel — there are two dates still to
+     fill in, and closing on the choice would make it unusable. */
+  step(await ev(`document.getElementById('range-pop').hidden === false`),
+    'choosing a custom period leaves the panel open to fill the dates in');
   const picked = await ev(`(() => {
     const end = new Date(); end.setHours(12,0,0,0);
     const start = new Date(end); start.setDate(start.getDate() - 2);
@@ -468,6 +639,38 @@ try {
   })`));
   step(desk.scroll <= desk.inner + 1, `no sideways scroll at ${desk.inner}px`);
   step(desk.sideVisible, 'the sidebar is permanently open on a wide screen');
+
+  /* The same panel, in its other shape. On a wide screen it is a dropdown
+     anchored under the trigger by hand, so it can be anchored wrongly — off
+     the right edge, or under the bar it came out of — in ways the phone
+     version cannot. */
+  await ev(`document.getElementById('range-btn').click()`);
+  await sleep(300);
+  const drop = JSON.parse(await ev(`(() => {
+    const pop = document.getElementById('range-pop');
+    const btn = document.getElementById('range-btn');
+    const p = pop.getBoundingClientRect(), b = btn.getBoundingClientRect();
+    const o = pop.querySelector('[data-preset="7"]').getBoundingClientRect();
+    const el = document.elementFromPoint(o.left + o.width / 2, o.top + o.height / 2);
+    return JSON.stringify({
+      below: Math.round(p.top - b.bottom),
+      onScreen: p.left >= 0 && p.right <= innerWidth && p.bottom <= innerHeight,
+      rightEdge: Math.round(b.right - p.right),
+      reaches: !!el && pop.contains(el),
+      onBody: pop.parentElement === document.body,
+    });
+  })()`));
+  step(drop.below >= 0 && drop.below < 24 && drop.onScreen,
+    `on a wide screen it hangs under the button (${drop.below}px below, fully on screen)`);
+  step(Math.abs(drop.rightEdge) <= 2, `and lines up with its right edge (${drop.rightEdge}px off)`);
+  step(drop.reaches && drop.onBody, 'and a click on it lands on it');
+  const shotDrop = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  writeFileSync(process.env.ADMIN_SHOT_DROP || 'admin-1280-period.png',
+    Buffer.from(shotDrop.data, 'base64'));
+  await ev(`document.getElementById('pop-scrim').click()`);
+  await sleep(200);
+  step(await ev(`document.getElementById('range-pop').parentElement.className === 'picker'`),
+    'closing puts the panel back in the toolbar, so a repaint cannot orphan it');
 
   const shotD = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true });
   writeFileSync(process.env.ADMIN_SHOT_D || 'admin-1280.png', Buffer.from(shotD.data, 'base64'));

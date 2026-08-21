@@ -17,8 +17,5 @@ plus-offer.png
 # screenshot artefacts from scripts/admin-check.mjs. These are pictures of the
 # admin panel, so they carry player emails and payment rows — they must never
 # be committed, whatever else happens.
-admin-390.png
-admin-390-full.png
-admin-390-nav.png
-admin-1280.png
-admin-1280-matches.png
+admin-390*.png
+admin-1280*.png

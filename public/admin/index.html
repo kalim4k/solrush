@@ -220,8 +220,31 @@
             position: sticky;
             top: 0;
             z-index: 4;
-            background: color-mix(in srgb, var(--bg) 86%, transparent);
-            backdrop-filter: saturate(1.5) blur(10px);
+            /* This bar is a stacking context whatever we do, because
+               `position: sticky` creates one on its own — unlike relative or
+               absolute, and with or without a z-index. Anything rendered INSIDE
+               it is therefore trapped in this layer no matter how large its own
+               z-index is.
+
+               The period panel used to live in here. Its z-index of 30 was
+               really "30, inside a layer at 4", so the scrim at 25 painted on
+               top of it: the panel looked dimmed, and every tap on it hit the
+               scrim and shut it. It worked perfectly for a script calling
+               .click(), which dispatches straight at an element and never asks
+               what is covering it, and was unusable with a finger.
+
+               The panel is moved to <body> while it is open. Nothing that has
+               to escape this bar can be a child of it. */
+            /* Opaque, and NOT frosted.
+
+               backdrop-filter was here and it was pretty, but an element with
+               one becomes the containing block for every position:fixed
+               descendant. The period sheet lives in this bar, so on a phone it
+               anchored to the bottom of the HEADER instead of the bottom of the
+               screen and floated in the middle of the page. A blur is not worth
+               a control that lands in the wrong place — and a solid bar over
+               scrolling numbers is easier to read anyway. */
+            background: var(--bg);
             border-bottom: 1px solid var(--line);
             padding: 12px 20px;
             display: flex;
@@ -316,40 +339,12 @@
                 padding: 10px 14px;
             }
 
-            /* The six presets fill a phone's width on their own, which pushed
-               the refresh button onto a line of its own — a whole row of
-               chrome for one icon. They share a line instead, and the presets
-               scroll sideways inside their own strip if they have to. */
+            /* The toolbar is one trigger and one refresh button now, so it
+               drops to its own line under the title rather than squeezing in
+               beside it. */
             .tools {
                 width: 100%;
                 margin-inline-start: 0;
-                flex-wrap: nowrap;
-            }
-
-            .tools .seg {
-                flex: 1;
-                min-width: 0;
-                overflow-x: auto;
-                scrollbar-width: none;
-            }
-
-            .tools .seg::-webkit-scrollbar {
-                display: none;
-            }
-
-            .tools>button {
-                flex: none;
-            }
-
-            /* Two date fields and a button do not fit beside each other at
-               390px; let them wrap onto their own line. */
-            #custom {
-                width: 100%;
-            }
-
-            #custom input {
-                flex: 1;
-                min-width: 120px;
             }
         }
 
@@ -394,6 +389,205 @@
         button:disabled {
             opacity: .5;
             cursor: default;
+        }
+
+        /* ---------- the period picker ----------
+
+           This was a row of six buttons, which is the shape you reach for
+           first and the wrong one here. Six is already too many to scan, it
+           filled a phone's whole width on its own, the custom range needed a
+           SECOND row that appeared and shifted everything below it, and after
+           all that the thing you most want to read — which dates am I actually
+           looking at — was nowhere on screen.
+
+           One button that states the answer, and a panel that offers the
+           alternatives with their dates spelled out. On a phone the panel
+           comes up from the bottom, where a thumb is. */
+        .picker {
+            position: relative;
+        }
+
+        .range-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            padding: 7px 11px;
+        }
+
+        .range-btn .range-name {
+            font-weight: 650;
+        }
+
+        .range-btn .range-dates {
+            color: var(--muted);
+            font-weight: 500;
+            border-inline-start: 1px solid var(--line);
+            padding-inline-start: 9px;
+        }
+
+        .range-btn .chev {
+            width: 15px;
+            height: 15px;
+            color: var(--faint);
+            transition: transform .18s ease;
+        }
+
+        .range-btn[aria-expanded="true"] .chev {
+            transform: rotate(180deg);
+        }
+
+        .range-btn[aria-expanded="true"] {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Fixed, and positioned from script, because it is moved to <body>
+           while open — see the note on .top. Anchoring it to the trigger with
+           CSS alone would mean keeping it inside the bar it has to escape. */
+        .pop {
+            position: fixed;
+            z-index: 30;
+            width: 302px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: 0 16px 40px rgba(10, 14, 25, .16), 0 2px 6px rgba(10, 14, 25, .06);
+            padding: 6px;
+            animation: pop .16s cubic-bezier(.2, .8, .3, 1);
+        }
+
+        @keyframes pop {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+        }
+
+        .pop-head {
+            font-size: .68rem;
+            text-transform: uppercase;
+            letter-spacing: .09em;
+            color: var(--faint);
+            font-weight: 700;
+            padding: 8px 10px 6px;
+        }
+
+        .pop .opt {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            text-align: start;
+            border: 0;
+            background: transparent;
+            border-radius: 9px;
+            padding: 8px 10px;
+            font-size: .88rem;
+            font-weight: 550;
+            color: var(--text);
+        }
+
+        .pop .opt:hover {
+            background: var(--line-soft);
+            color: var(--text);
+        }
+
+        .pop .opt small {
+            margin-inline-start: auto;
+            color: var(--faint);
+            font-weight: 500;
+            font-size: .76rem;
+            white-space: nowrap;
+        }
+
+        .pop .opt .i {
+            width: 15px;
+            height: 15px;
+            color: var(--accent);
+            opacity: 0;
+        }
+
+        .pop .opt[aria-pressed="true"] {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .pop .opt[aria-pressed="true"] .i {
+            opacity: 1;
+        }
+
+        .pop-sep {
+            height: 1px;
+            background: var(--line);
+            margin: 6px 4px;
+        }
+
+        .pop-custom {
+            padding: 2px 10px 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .pop-custom label {
+            display: grid;
+            grid-template-columns: 34px 1fr;
+            align-items: center;
+            gap: 8px;
+            font-size: .8rem;
+            color: var(--muted);
+        }
+
+        .pop-custom input {
+            width: 100%;
+        }
+
+        .pop-custom button {
+            width: 100%;
+            margin-top: 2px;
+        }
+
+        .pop-scrim {
+            position: fixed;
+            inset: 0;
+            z-index: 25;
+        }
+
+        /* On a phone it is a sheet, not a dropdown: anchored to the bottom,
+           full width, within reach. */
+        @media (max-width: 700px) {
+            .pop {
+                position: fixed;
+                inset: auto 0 0 0;
+                width: auto;
+                border-radius: 18px 18px 0 0;
+                padding: 6px 6px calc(14px + env(safe-area-inset-bottom, 0px));
+                animation: sheet .2s cubic-bezier(.2, .8, .3, 1);
+            }
+
+            .pop-scrim {
+                background: rgba(8, 10, 16, .35);
+            }
+
+            .pop .opt {
+                padding: 12px 12px;
+                font-size: .95rem;
+            }
+
+            .range-btn .range-dates {
+                display: none;
+            }
+        }
+
+        @keyframes sheet {
+            from {
+                transform: translateY(100%);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .pop {
+                animation: none;
+            }
         }
 
         .seg {
@@ -862,11 +1056,85 @@
             text-align: center;
         }
 
-        .skel {
-            color: var(--faint);
-            font-size: .87rem;
-            padding: 30px 0;
-            text-align: center;
+        /* ---------- skeletons ----------
+
+           Shaped like the thing that is coming, not like a spinner. The page
+           used to blank to a single "…" on every reload, so switching range
+           threw the whole layout away and built it again a moment later —
+           three jumps for one click. A skeleton of the right shape means
+           nothing moves when the data lands; the grey simply becomes text. */
+        .sk {
+            background: var(--line-soft);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sk::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            transform: translateX(-100%);
+            background: linear-gradient(90deg, transparent,
+                    color-mix(in srgb, var(--panel) 70%, transparent), transparent);
+            animation: shimmer 1.25s ease-in-out infinite;
+        }
+
+        html[dir="rtl"] .sk::after {
+            animation-direction: reverse;
+        }
+
+        @keyframes shimmer {
+            to {
+                transform: translateX(100%);
+            }
+        }
+
+        /* Reduced motion keeps the shape and drops the sweep — the layout is
+           the useful part, the animation is decoration. */
+        @media (prefers-reduced-motion: reduce) {
+            .sk::after {
+                animation: none;
+            }
+        }
+
+        .skel .card,
+        .skel .tile {
+            /* nothing to read yet, so nothing to lift off the page */
+            box-shadow: none;
+        }
+
+        .sk-line+.sk-line {
+            margin-top: 7px;
+        }
+
+        .sk-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 148px;
+        }
+
+        .sk-bars .sk {
+            flex: 1;
+            border-radius: 4px 4px 2px 2px;
+        }
+
+        .sk-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 13px 0;
+            border-top: 1px solid var(--line-soft);
+        }
+
+        .sk-row:first-child {
+            border-top: 0;
+        }
+
+        .sk-row .grow {
+            flex: 1;
+            min-width: 0;
         }
 
         @media (max-width: 700px) {
@@ -958,6 +1226,16 @@
                 <path d="M20 12a8 8 0 1 1-2.6-5.9" />
                 <path d="M20 4v4.5h-4.5" />
             </symbol>
+            <symbol id="ic-cal" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="16" rx="3" />
+                <path d="M3 10h18M8 3v4M16 3v4" />
+            </symbol>
+            <symbol id="ic-chev" viewBox="0 0 24 24">
+                <path d="M6 9.5 12 15.5 18 9.5" />
+            </symbol>
+            <symbol id="ic-check" viewBox="0 0 24 24">
+                <path d="M4.5 12.5 9.5 17.5 19.5 6.5" />
+            </symbol>
         </defs>
     </svg>
 
@@ -979,7 +1257,7 @@
                 <span class="when" id="when"></span>
                 <div class="tools" id="tools"></div>
             </header>
-            <div class="view" id="view"></div>
+            <div class="view" id="view" aria-busy="false"></div>
         </main>
     </div>
 
@@ -1062,7 +1340,13 @@
            to mean seven of their days, not seven UTC days ending at one in the
            morning. The server buckets from whatever start it is given, so the
            chart's columns come out in the same days too. */
-        const PRESETS = [['7', '7 j'], ['30', '30 j'], ['90', '90 j'], ['365', '12 mois'], ['all', 'Tout']];
+        const PRESETS = [
+            ['7', '7 derniers jours'],
+            ['30', '30 derniers jours'],
+            ['90', '90 derniers jours'],
+            ['365', '12 derniers mois'],
+            ['all', 'Depuis le début'],
+        ];
 
         const state = {
             view: 'overview',
@@ -1102,23 +1386,113 @@
             return dayLabel(b.from, opts) + ' → ' + dayLabel(last, opts);
         }
 
+        // The dates a preset would resolve to, so the panel can show them
+        // beside each choice instead of making them a surprise.
+        function presetDates(key) {
+            const end = new Date(); end.setHours(0, 0, 0, 0); end.setDate(end.getDate() + 1);
+            if (key === 'all') return '';
+            const start = new Date(end);
+            start.setDate(start.getDate() - Number(key));
+            const last = new Date(end.getTime() - 1);
+            /* Across a year boundary this goes numeric rather than showing
+               "22 août 25", which reads as a day-and-month before it reads as
+               a year and made "12 derniers mois" look like a mistake. */
+            if (start.getFullYear() !== last.getFullYear()) {
+                const short = (d) => d.toLocaleDateString('fr', {
+                    day: '2-digit', month: '2-digit', year: '2-digit',
+                });
+                return short(start) + ' – ' + short(last);
+            }
+            const opts = { day: 'numeric', month: 'short' };
+            return dayLabel(start, opts) + ' – ' + dayLabel(last, opts);
+        }
+
+        const presetName = () => state.preset === 'custom'
+            ? 'Période choisie'
+            : (PRESETS.find(([k]) => k === state.preset) || PRESETS[1])[1];
+
         function rangeControl() {
             const custom = state.preset === 'custom';
             const b = bounds();
+            const today = isoDay(new Date());
             const start = custom && state.from ? state.from : isoDay(b.from);
             const stop = custom && state.to ? state.to : isoDay(new Date(Date.parse(b.to) - 1));
             return `
-              <div class="seg" id="preset">
-                ${PRESETS.map(([k, l]) => `<button data-preset="${k}"
-                    aria-pressed="${state.preset === k}">${l}</button>`).join('')}
-                <button data-preset="custom" aria-pressed="${custom}">Période…</button>
-              </div>
-              ${custom ? `<div class="row" id="custom">
-                 <input type="date" id="d-from" value="${esc(start)}" max="${esc(isoDay(new Date()))}">
-                 <span class="sub">→</span>
-                 <input type="date" id="d-to" value="${esc(stop)}" max="${esc(isoDay(new Date()))}">
-                 <button class="solid" id="d-go">Appliquer</button>
-               </div>` : ''}`;
+              <div class="picker">
+                <button class="range-btn" id="range-btn" aria-expanded="false" aria-haspopup="dialog">
+                  ${icon('cal')}
+                  <span class="range-name">${esc(presetName())}</span>
+                  <span class="range-dates">${esc(rangeLabel())}</span>
+                  ${icon('chev').replace('class="i"', 'class="i chev"')}
+                </button>
+                <div class="pop" id="range-pop" role="dialog" aria-label="Période" hidden>
+                  <div class="pop-head">Période</div>
+                  ${PRESETS.map(([k, l]) => `
+                    <button class="opt" data-preset="${k}" aria-pressed="${state.preset === k}">
+                      ${icon('check')}<span>${l}</span><small>${esc(presetDates(k))}</small>
+                    </button>`).join('')}
+                  <div class="pop-sep"></div>
+                  <button class="opt" data-preset="custom" aria-pressed="${custom}">
+                    ${icon('check')}<span>Période personnalisée</span>
+                  </button>
+                  <div class="pop-custom">
+                    <label>Du <input type="date" id="d-from"
+                        value="${esc(start)}" max="${esc(today)}"></label>
+                    <label>Au <input type="date" id="d-to"
+                        value="${esc(stop)}" max="${esc(today)}"></label>
+                    <button class="solid" id="d-go">Appliquer cette période</button>
+                  </div>
+                </div>
+              </div>`;
+        }
+
+        /* Open and shut.
+
+           The scrim is a real element rather than a document-level click
+           handler: a handler on document fires for the very click that opened
+           the panel unless it is deferred, and that kind of ordering bug shows
+           up as "the menu will not open" on exactly one browser. */
+        const onPhone = () => window.matchMedia('(max-width: 700px)').matches;
+
+        function closeRange() {
+            const pop = $('range-pop'), btn = $('range-btn');
+            if (pop) {
+                pop.hidden = true;
+                pop.style.cssText = '';
+                // Put it back where paintTools() expects to find it, so the
+                // next repaint of the toolbar does not leave an orphan on
+                // <body> and build a second one beside it.
+                document.querySelector('.picker')?.appendChild(pop);
+            }
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+            document.getElementById('pop-scrim')?.remove();
+        }
+
+        function openRange() {
+            const pop = $('range-pop'), btn = $('range-btn');
+            if (!pop) return;
+
+            const scrim = document.createElement('div');
+            scrim.className = 'pop-scrim';
+            scrim.id = 'pop-scrim';
+            scrim.onclick = closeRange;
+            document.body.appendChild(scrim);
+
+            // Out of the sticky bar and onto <body>, where its z-index means
+            // what it says.
+            document.body.appendChild(pop);
+            pop.hidden = false;
+            btn.setAttribute('aria-expanded', 'true');
+
+            /* On a phone the stylesheet pins it to the bottom of the screen and
+               no coordinates are wanted — inline ones would beat the media
+               query and drag the sheet back up. On a wide screen it is anchored
+               under the trigger by hand, which is what moving it out of the bar
+               costs. */
+            if (onPhone()) return;
+            const r = btn.getBoundingClientRect();
+            pop.style.top = Math.round(r.bottom + 8) + 'px';
+            pop.style.left = Math.round(Math.max(8, r.right - pop.offsetWidth)) + 'px';
         }
 
         /* ================= chart ================= */
@@ -1177,6 +1551,81 @@
                 <div class="x-axis">${axis}</div>
               </div>`;
         }
+
+        /* ================= skeletons =================
+
+           One per view, shaped like what is coming. The point is not decoration
+           — it is that nothing MOVES when the data arrives: the tiles are
+           already there, in the right grid, at the right height, and the grey
+           blocks inside them turn into numbers. A spinner, or the single "…"
+           this used to show, throws the layout away and rebuilds it, which
+           reads as the page breaking and repairing itself on every click. */
+        const sk = (w, h) => `<div class="sk" style="width:${w};height:${h}"></div>`;
+        const skLines = (...ws) => ws.map((w) => `<div class="sk sk-line" style="width:${w};height:9px"></div>`).join('');
+
+        /* Three bands, because a real tile is three: a figure, its label, and
+           either a chip or a second line under it. Two bands left the
+           placeholder a hundred pixels short over four rows, which is a jump
+           on landing however right the rest of it looked. */
+        const skTiles = (n, cls = 'by4') => `<div class="tiles ${cls}">${
+            Array.from({ length: n }, () => `<div class="tile">
+                ${sk('52%', '26px')}<div style="height:10px"></div>
+                ${skLines('78%', '46%')}
+            </div>`).join('')}</div>`;
+
+        const skHead = () => `<div class="sec-head">${sk('120px', '10px')}</div>`;
+
+        const skHero = () => `<div class="card hero">
+            <div class="hero-main">
+              ${sk('44%', '10px')}<div style="height:12px"></div>
+              ${sk('62%', '38px')}<div style="height:12px"></div>
+              ${skLines('94%', '88%', '52%')}
+            </div>
+            <div class="hero-side">
+              <div style="display:block">${sk('64%', '17px')}<div style="height:6px"></div>${sk('80%', '10px')}</div>
+              <div style="display:block">${sk('34%', '17px')}<div style="height:6px"></div>${sk('72%', '10px')}</div>
+            </div>
+          </div>`;
+
+        /* Bar heights are fixed, not random: a skeleton that reshuffles itself
+           on every paint draws the eye to the placeholder instead of past it. */
+        const SK_BARS = [38, 62, 28, 74, 45, 88, 34, 56, 70, 41, 60, 30, 80, 50];
+        const skChart = () => `${skHead()}<div class="card">
+            ${sk('70px', '9px')}<div style="height:10px"></div>
+            <div class="sk-bars">${SK_BARS.map((h) => `<div class="sk" style="height:${h}%"></div>`).join('')}</div>
+            <div style="height:8px"></div>${sk('100%', '9px')}
+          </div>`;
+
+        /* Rows on their own, because a table that reloads inside a card it
+           already has must not grow a second card around itself — which is
+           exactly what replacing the whole block with skTable() did. */
+        const skRows = (rows = 6) => `<div class="skel">${
+            Array.from({ length: rows }, () => `<div class="sk-row">
+                <div class="grow">${skLines('42%', '28%')}</div>
+                ${sk('52px', '11px')}${sk('74px', '11px')}
+            </div>`).join('')}</div>`;
+
+        const skTable = (rows = 6) => `<div class="card">${skRows(rows)}</div>`;
+
+        /* Wrapped in the same <section> elements the real views use, and that is
+           not tidiness — section carries the 22px that separates one group from
+           the next. Without it the placeholder was correct block by block and
+           still a centimetre shorter overall, so the page shuffled upwards when
+           the data landed. A skeleton that gets the spacing wrong is a jump
+           with extra steps. */
+        const sec = (...parts) => parts.map((p) => `<section>${p}</section>`).join('');
+
+        const SKELETON = {
+            overview: () => sec(skHero(), skHead() + skTiles(8), skChart(), skHead() + skTiles(3, 'by3')),
+            revenue: () => sec(skHero(), skHead() + skTiles(4), skChart(), skHead() + skTable(6)),
+            players: () => sec(
+                `<div class="card">${sk('100%', '38px')}<div style="height:10px"></div>${sk('58%', '30px')}</div>`,
+                skHead() + skTable(8)),
+            matches: () => sec(skHead() + skTable(9)),
+            time: () => sec(skHead() + skTiles(3, 'by3'), skHead() + skTiles(3, 'by3'),
+                skHead() + skTiles(3, 'by3')),
+            live: () => sec(skTiles(3, 'by3'), skHead() + skTable(5)),
+        };
 
         /* ================= views ================= */
         const VIEWS = {
@@ -1404,39 +1853,45 @@
 
             async live() {
                 const d = await api('/api/admin/live');
-                const rows = d.online.map((p) => `
-                  <tr>
-                    <td data-label="Joueur"><span class="dot ${p.away ? 'away' : 'beat'}"></span>
-                        <span class="who">${esc(p.nick)}</span>
-                        ${p.plus ? ' <span class="pill plus">Plus</span>' : ''}</td>
-                    <td data-label="Compte">${p.account ? 'inscrit' : '<span class="sub">invité</span>'}</td>
-                    <td data-label="Points">${n0(p.points)}</td>
-                    <td data-label="État">${p.away ? '<span class="sub">déconnecté</span>'
-                        : p.playing ? `en partie <span class="sub">${esc(p.room || '')}</span>`
-                            : p.room ? `salon <span class="sub">${esc(p.room)}</span>` : 'dans les menus'}</td>
-                  </tr>`).join('');
                 return `
-                  <section>
-                    <div class="tiles by3">
-                      <div class="tile"><b>${n0(d.live)}</b><span class="lab">joueurs actifs</span></div>
-                      <div class="tile"><b>${n0(d.online.length - d.live)}</b>
-                          <span class="lab">en reconnexion</span></div>
-                      <div class="tile"><b>${n0(d.rooms)}</b><span class="lab">salons ouverts</span></div>
-                    </div>
-                  </section>
+                  <section><div id="live-tiles">${liveTiles(d)}</div></section>
                   <section>
                     <div class="sec-head"><h2>Connectés maintenant</h2>
                       <span class="note">rafraîchi toutes les 10 s</span></div>
-                    <div class="card">
-                      ${rows ? `<table><thead><tr><th>Joueur</th><th>Compte</th><th>Points</th><th>État</th></tr></thead>
-                        <tbody>${rows}</tbody></table>`
-                        : '<p class="empty">Personne de connecté.</p>'}
-                    </div>
+                    <div class="card" id="live-rows">${liveRows(d)}</div>
                   </section>`;
             },
         };
 
         /* ================= tables that reload in place ================= */
+
+        /* The live view is the one thing on a timer, so it is the one view that
+           must NOT be redrawn wholesale: replacing the page every ten seconds
+           throws away the scroll position and blinks the whole list at somebody
+           who is reading it. Only these two blocks are rewritten. */
+        const liveTiles = (d) => `<div class="tiles by3">
+            <div class="tile"><b>${n0(d.live)}</b><span class="lab">joueurs actifs</span></div>
+            <div class="tile"><b>${n0(d.online.length - d.live)}</b>
+                <span class="lab">en reconnexion</span></div>
+            <div class="tile"><b>${n0(d.rooms)}</b><span class="lab">salons ouverts</span></div>
+          </div>`;
+
+        function liveRows(d) {
+            if (!d.online.length) return '<p class="empty">Personne de connecté.</p>';
+            const rows = d.online.map((p) => `
+              <tr>
+                <td data-label="Joueur"><span class="dot ${p.away ? 'away' : 'beat'}"></span>
+                    <span class="who">${esc(p.nick)}</span>
+                    ${p.plus ? ' <span class="pill plus">Plus</span>' : ''}</td>
+                <td data-label="Compte">${p.account ? 'inscrit' : '<span class="sub">invité</span>'}</td>
+                <td data-label="Points">${n0(p.points)}</td>
+                <td data-label="État">${p.away ? '<span class="sub">déconnecté</span>'
+                    : p.playing ? `en partie <span class="sub">${esc(p.room || '')}</span>`
+                        : p.room ? `salon <span class="sub">${esc(p.room)}</span>` : 'dans les menus'}</td>
+              </tr>`).join('');
+            return `<table><thead><tr><th>Joueur</th><th>Compte</th><th>Points</th><th>État</th></tr></thead>
+                <tbody>${rows}</tbody></table>`;
+        }
         const payState = { status: '', limit: 50, rows: [], total: 0 };
         const matchState = { limit: 50, rows: [], total: 0 };
         const playerState = { q: '', sort: 'recent', rows: [] };
@@ -1533,27 +1988,40 @@
                 + `<button id="refresh" aria-label="Actualiser">${icon('refresh')}</button>`;
             $('refresh').onclick = () => draw(true);
 
-            const preset = $('preset');
-            if (preset) {
-                for (const b of preset.querySelectorAll('[data-preset]')) {
+            const btn = $('range-btn');
+            if (btn) {
+                btn.onclick = () => {
+                    if ($('range-pop').hidden) openRange(); else closeRange();
+                };
+                for (const b of $('range-pop').querySelectorAll('[data-preset]')) {
                     b.onclick = () => {
                         state.preset = b.dataset.preset;
                         localStorage.setItem('adm_preset', state.preset);
-                        if (state.preset !== 'custom') { paintTools(); draw(); }
-                        else paintTools();
+                        /* "Période personnalisée" only marks itself chosen — the
+                           panel stays open so the two dates can be filled in.
+                           Every other choice is complete on its own and closes. */
+                        if (state.preset === 'custom') {
+                            for (const x of $('range-pop').querySelectorAll('[data-preset]')) {
+                                x.setAttribute('aria-pressed', String(x.dataset.preset === 'custom'));
+                            }
+                            $('d-from').focus();
+                            return;
+                        }
+                        closeRange();
+                        draw();
                     };
                 }
-            }
-            const go_ = $('d-go');
-            if (go_) {
-                go_.onclick = () => {
+                $('d-go').onclick = () => {
                     const f = $('d-from').value, t = $('d-to').value;
                     if (!f || !t) return;
                     // Swapped dates are a slip, not an error worth refusing.
+                    state.preset = 'custom';
                     state.from = f <= t ? f : t;
                     state.to = f <= t ? t : f;
+                    localStorage.setItem('adm_preset', 'custom');
                     localStorage.setItem('adm_from', state.from);
                     localStorage.setItem('adm_to', state.to);
+                    closeRange();
                     draw();
                 };
             }
@@ -1571,16 +2039,19 @@
         async function draw(fresh) {
             const mine = ++drawing;
             $('title').textContent = VIEWS[state.view].title;
-            $('view').innerHTML = '<p class="skel">…</p>';
+            $('view').setAttribute('aria-busy', 'true');
+            $('view').innerHTML = `<div class="skel">${(SKELETON[state.view] || SKELETON.matches)()}</div>`;
             paintTools();
             try {
                 const html = await RENDER[state.view](fresh);
                 if (mine !== drawing) return;   // a newer draw has started; drop this one
                 $('view').innerHTML = html;
+                $('view').setAttribute('aria-busy', 'false');
                 $('when').textContent = 'à ' + new Date().toLocaleTimeString('fr');
                 wire();
             } catch (e) {
                 if (mine !== drawing) return;
+                $('view').setAttribute('aria-busy', 'false');
                 if (e.status === 403) {
                     return gate('Ce compte n’a pas accès à l’administration. '
                         + 'Vérifie ADMIN_EMAILS sur le serveur.');
@@ -1617,6 +2088,9 @@
                         for (const x of filter.querySelectorAll('[data-status]')) {
                             x.setAttribute('aria-pressed', String(x.dataset.status === payState.status));
                         }
+                        // Same skeleton the full page uses, so a filter change
+                        // looks like the same operation it is.
+                        $('pay-box').innerHTML = skRows(5);
                         const out = await api('/api/admin/payments', {
                             ...bounds(), status: payState.status || undefined, limit: 50, offset: 0,
                         });
@@ -1672,6 +2146,7 @@
             if (q) {
                 const run = async () => {
                     playerState.q = q.value.trim();
+                    $('players-box').innerHTML = skRows(6);
                     const out = await api('/api/admin/players',
                         { q: playerState.q, sort: playerState.sort, limit: 50 });
                     playerState.rows = out.rows;
@@ -1717,9 +2192,9 @@
                 liveCount = d.live;
                 const tag = $('live-tag');
                 if (tag) { tag.hidden = false; tag.textContent = d.live; }
-                if (state.view === 'live') {
-                    $('view').innerHTML = await RENDER.live();
-                    wire();
+                if (state.view === 'live' && $('live-rows')) {
+                    $('live-tiles').innerHTML = liveTiles(d);
+                    $('live-rows').innerHTML = liveRows(d);
                 }
             } catch { /* a failed poll is not worth a message */ }
         }
@@ -1727,8 +2202,12 @@
         $('burger').onclick = () => document.body.classList.toggle('open');
         $('scrim').onclick = () => document.body.classList.remove('open');
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') document.body.classList.remove('open');
+            if (e.key !== 'Escape') return;
+            document.body.classList.remove('open');
+            closeRange();
         });
+        // Anchored by hand, so it has to be let go of when the anchor moves.
+        window.addEventListener('resize', closeRange);
         window.addEventListener('hashchange', () => go(location.hash.replace('#/', '')));
 
         if (!session?.access_token) {
